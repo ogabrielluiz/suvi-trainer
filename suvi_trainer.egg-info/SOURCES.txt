@@ -1,0 +1,9 @@
+setup.py
+suvi-trainer/__init__.py
+suvi-trainer/config.py
+suvi-trainer/gui.py
+suvi_trainer.egg-info/PKG-INFO
+suvi_trainer.egg-info/SOURCES.txt
+suvi_trainer.egg-info/dependency_links.txt
+suvi_trainer.egg-info/requires.txt
+suvi_trainer.egg-info/top_level.txt
