@@ -1,8 +1,8 @@
 Metadata-Version: 1.0
-Name: suvi-trainer
+Name: suvitrainer
 Version: 0.0.1
 Summary: Training tool for SUVI thematic map machine learning
-Home-page: https://github.com/jmbhughes/suvi-trainer
+Home-page: https://github.com/jmbhughes/suvitrainer
 Author: J. Marcus Hughes
 Author-email: hughes.jmb@gmail.com
 License: MIT

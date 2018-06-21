@@ -3,3 +3,4 @@ numpy
 sunpy
 scikit-image
 matplotlib
+deepdish

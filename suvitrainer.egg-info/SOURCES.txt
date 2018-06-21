@@ -1,0 +1,11 @@
+setup.py
+scripts/easy_gui.py
+scripts/run_gui.py
+suvitrainer/__init__.py
+suvitrainer/config.py
+suvitrainer/gui.py
+suvitrainer.egg-info/PKG-INFO
+suvitrainer.egg-info/SOURCES.txt
+suvitrainer.egg-info/dependency_links.txt
+suvitrainer.egg-info/requires.txt
+suvitrainer.egg-info/top_level.txt

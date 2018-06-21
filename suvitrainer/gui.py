@@ -1,26 +1,20 @@
-# from collections import namedtuple
-
 import tkinter as tk
 from tkinter import *  # bad idea... but I did it
-from tkinter import messagebox
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
-from astropy.io import fits
 import numpy as np
-from sunpy import sun, time
+from astropy.io import fits
 from skimage import draw
+from sunpy import sun, time
 
-import matplotlib
+from .config import *
 
-matplotlib.use("TkAgg")
 from matplotlib import path
 import matplotlib.pyplot as plt
 from matplotlib.widgets import LassoSelector
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.backend_bases import key_press_handler
-from matplotlib.figure import Figure
 
-from .config import *
+matplotlib.use("TkAgg")
 
 
 class VerticalScrolledFrame(Frame):
@@ -104,28 +98,6 @@ class CustomToolbar(NavigationToolbar2TkAgg):
             self.editframe.config(background='red', text='Draw')
             self.app.change_class()
 
-    # def lasso(self):
-    #     if self._idPress is not None:
-    #         self._idPress = self.canvas.mpl_disconnect(self._idPress)
-    #         self.mode = ''
-
-    #     if self._idRelease is not None:
-    #         self._idRelease = self.canvas.mpl_disconnect(self._idRelease)
-    #         self.mode = ''
-
-    #     if self._active == "LASSO":
-    #         print("killing")
-    #         self._active = None
-    #         #self.app.lasso = None
-    #     else:
-    #         print("birthing")
-    #         self._active = "LASSO"
-    #         lineprops = dict(color="red", linewidth=2)
-    #         self.app.lasso = LassoSelector(self.app.imageax, self.app.onlasso, lineprops=lineprops)
-    #         self._idPress = self.canvas.mpl_connect('button_press_event', self.app.lasso.onpress)
-    #         self._idRelease = self.canvas.mpl_connect('button_release_event', self.app.lasso.onrelease)
-    #         print(dir(self.app.lasso))
-
 
 class App(tk.Tk):
     def __init__(self, data, output, group, image_directory, header,
@@ -161,7 +133,7 @@ class App(tk.Tk):
             self.selection_array = self.relabel
 
     def assign_defaults(self):
-        ''' assigns variables for many graphical defaults '''
+        '''assigns variables for many graphical defaults'''
         self.single_color_theme = 'yellow'  # color used for the single color menus
         # self.option_frame_height =  300 # pixels tall the option/configuration frame is
         # self.canvas_size = (10, 5) # size of the canvas frame (in inches)
