@@ -8,6 +8,8 @@ BASE_URL = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellite
 PRODUCTS = ['suvi-l1b-fe094', 'suvi-l1b-fe131', 'suvi-l1b-fe171',
             'suvi-l1b-fe195', 'suvi-l1b-fe284', 'suvi-l1b-he304']
 
+PRODUCTS_MAP = {p: "c" + str(int(p.split("-")[-1][2:])) for p in PRODUCTS}
+
 SOLAR_CLASSES = [('unlabeled', 0),
                  ('empty_outer_space', 1),
                  ('structured_outer_space', 2),
@@ -43,7 +45,7 @@ CONFIDENCE_LEVELS = [("100% confident", 7),
                      ("more than fifty-fifty", 2),
                      ("fifty-fifty", 1)]
 
-DEFAULT_HEADER = 'c171'
+DEFAULT_HEADER = 'c195'
 DEFAULT_CHANNELS = {'red': 'c171', 'blue': 'c284', 'green': 'c195', 'single': 'chalpha'}
 
 DEFAULT_POWER = {'red': 0.26, 'blue': 0.26, 'green': 0.29, 'single': 2}

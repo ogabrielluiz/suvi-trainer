@@ -13,6 +13,7 @@ from matplotlib import path
 import matplotlib.pyplot as plt
 from matplotlib.widgets import LassoSelector
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from suvitrainer.fileio import Outgest
 
 matplotlib.use("TkAgg")
 
@@ -104,10 +105,11 @@ class CustomToolbar(NavigationToolbar2TkAgg):
 
 
 class App(tk.Tk):
-    def __init__(self, data, output, group, image_directory, header,
+    def __init__(self, data, output, group, image_directory, headers,
                  blank=False, relabel=None, resizable=True):
         self.history = []
-        self.header = header
+        self.header = headers[DEFAULT_HEADER]
+        self.headers = headers
         self.interpret_header()
         self.group = group
         self.image_directory = image_directory
@@ -161,18 +163,19 @@ class App(tk.Tk):
         self.sun_radius_pixel = (sun_radius_angular / arcsec_per_pixel)
 
     def save(self):
+        Outgest(self.output, self.selection_array.astype('uint8'), self.headers).save()
         # fits.writeto(self.output, data=self.selection_array, overwrite=True)
-        with fits.open(self.image_directory + self.group[DEFAULT_HEADER]) as f:
-            header = f[0].header
-        header['channels'] = DELIMITER.join(list(self.group.keys()))
-        header['imgdir'] = self.image_directory
-        for key, path in self.group.items():
-            header[key] = path.split(self.image_directory)[-1]  # self.image_directory + path
-        ordered_solar_classes = dict([(index, label) for label, index in SOLAR_CLASSES])
-        ordered_solar_classes = [ordered_solar_classes[index] for index in range(len(ordered_solar_classes))]
-        ordered_solar_classes = DELIMITER.join(ordered_solar_classes)
-        header['classes'] = ordered_solar_classes
-        fits.writeto(self.output, data=self.selection_array, header=header, overwrite=True)
+        # with fits.open(self.image_directory + self.group[DEFAULT_HEADER]) as f:
+        #     header = f[0].header
+        # header['channels'] = DELIMITER.join(list(self.group.keys()))
+        # header['imgdir'] = self.image_directory
+        # for key, path in self.group.items():
+        #     header[key] = path.split(self.image_directory)[-1]  # self.image_directory + path
+        # ordered_solar_classes = dict([(index, label) for label, index in SOLAR_CLASSES])
+        # ordered_solar_classes = [ordered_solar_classes[index] for index in range(len(ordered_solar_classes))]
+        # ordered_solar_classes = DELIMITER.join(ordered_solar_classes)
+        # header['classes'] = ordered_solar_classes
+        # fits.writeto(self.output, data=self.selection_array, header=header, overwrite=True)
 
     def on_exit(self):
         """When you click to exit, this function is called"""
@@ -215,8 +218,8 @@ class App(tk.Tk):
             self.image[:, :, order[color]] = np.power(self.image[:, :, order[color]],
                                                       self.multicolorpower[color].get())
             # set outliers above 5 sigma to 0
-            self.image[np.where(self.image[:, :, order[color]] > np.mean(self.image[:, :, order[color]]) + 5 * np.std(
-                self.image[:, :, order[color]]))] = 0
+            # self.image[np.where(self.image[:, :, order[color]] > np.mean(self.image[:, :, order[color]]) + 5 * np.std(
+             #   self.image[:, :, order[color]]))] = 0
 
             # overmax = self.image[:,:,order[color]] > self.multicolormax[color].get() * np.max(self.image[:,:,order[color]])
             # undermin = self.image[:,:,order[color]] < self.multicolormin[color].get() * np.max(self.image[:,:,order[color]])
@@ -224,7 +227,9 @@ class App(tk.Tk):
             # self.image[:,:,order[color]][undermin] = self.multicolormin[color].get()
 
         for color, index in order.items():
-            self.image[:, :, index] /= np.max(self.image[:, :, index])
+            self.image[:, :, index] /= np.nanmax(self.image[:, :, index])
+        print(self.image)
+
 
     def configure_singlecolor_image(self):
         ''' configures the three color image according to the requested parameters '''

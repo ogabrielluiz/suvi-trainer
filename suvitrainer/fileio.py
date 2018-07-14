@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 from astropy.io import fits
-from suvitrainer.config import PRODUCTS, BASE_URL
+from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER
 import urllib.request
 from bs4 import BeautifulSoup
-import re
+import re, os
 import numpy as np
+from multiprocessing.dummy import Pool as ThreadPool
+from dateutil import parser as date_parser
 
 
 class Fetcher:
@@ -26,8 +28,9 @@ class Fetcher:
         """
         For all products in products, will call the correct fetch routine and download an image
         """
-        for product in self.products:
-            self.fetch_suvi(product)
+        pool = ThreadPool()
+        results = pool.map(self.fetch_suvi, self.products)
+        return results
 
     def fetch_suvi(self, product):
         """
@@ -56,6 +59,13 @@ class Fetcher:
 
         while not download_and_check(i):
             i += 1
+
+        with fits.open("{}.fits".format(product)) as hdu:
+            head = hdu[0].header
+            data = hdu[0].data
+        os.remove("{}.fits".format(product))
+
+        return product, head, data
 
     @staticmethod
     def parse_filename_meta(filename):
@@ -109,6 +119,124 @@ class Fetcher:
             # we didn't find any matching patterns...
             raise ValueError("Timestamps not detected in filename: %s" % filename)
         return filename, dt_start, dt_end, match.group("platform"), match.group("product")
+
+
+class Outgest:
+    """ saves a thematic map in the correct format for classification """
+    def __init__(self, filename, thematic_map, headers):
+        self.filename = filename
+        self.thmap = thematic_map
+        self.ref_hdr = headers[DEFAULT_HEADER]
+        self.start_time = date_parser.parse(headers[DEFAULT_HEADER]['date-obs'])
+        self.end_time = date_parser.parse(headers[DEFAULT_HEADER]['date-obs'])
+        for channel, header in headers.items():
+            date = date_parser.parse(header['date-obs'])
+            if date < self.start_time:
+                self.start_time = date
+            if date > self.end_time:
+                self.end_time = date
+
+    @staticmethod
+    def set_fits_header(hdr_key, hdr_src, hdu):
+        try:
+            card_ind = hdr_src.index(hdr_key)
+        except ValueError:
+           print('Invalid FITS header keyword: %s --> omitting from file' % hdr_key)
+        else:
+            card = hdr_src.cards[card_ind]
+            hdu.header.append((card.keyword, card.value, card.comment))
+
+    def save(self):
+        pri_hdu = fits.PrimaryHDU(data=self.thmap)
+
+        # Temporal Information
+        date_fmt = '%Y-%m-%dT%H:%M:%S.%f'
+        date_beg = self.start_time.strftime(date_fmt)
+        date_end = self.end_time.strftime(date_fmt)
+        date_now = datetime.now().strftime(date_fmt)
+        self.set_fits_header("TIMESYS", self.ref_hdr, pri_hdu)
+        pri_hdu.header.append(("DATE-BEG", date_beg, "sun observation start time on sat"))
+        pri_hdu.header.append(("DATE-END", date_end, "sun observation end time on sat"))
+        pri_hdu.header.append(("DATE", date_now, "file generation time"))
+
+        # Instrument & Spacecraft State during Observation
+        pri_hdu.header.append(("EXPTIME", 1., "[s] effective imaging exposure time"))
+        self.set_fits_header("YAW_FLIP", self.ref_hdr, pri_hdu)
+        self.set_fits_header("ECLIPSE", self.ref_hdr, pri_hdu)
+
+        # Pointing & Projection
+        self.set_fits_header("WCSNAME", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CTYPE1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CTYPE2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CUNIT1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CUNIT2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("PC1_1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("PC1_2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("PC2_1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("PC2_2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CDELT1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CDELT2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CRVAL1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CRVAL2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CRPIX1", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CRPIX2", self.ref_hdr, pri_hdu)
+        self.set_fits_header("DIAM_SUN", self.ref_hdr, pri_hdu)
+        self.set_fits_header("LONPOLE", self.ref_hdr, pri_hdu)
+        self.set_fits_header("CROTA", self.ref_hdr, pri_hdu)
+        self.set_fits_header("SOLAR_B0", self.ref_hdr, pri_hdu)
+
+        # File Provenance
+        pri_hdu.header.append(("TITLE", "Expert Labeled Thematic Map Image", "image title"))
+        pri_hdu.header.append(("MAP_MTHD", "human", "thematic map classifier method"))
+
+        # Add COMMENT cards
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 1,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 2, ("COMMENT", 'USING SUVI THEMATIC MAP FILES'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 3,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 4,
+                              ("COMMENT", 'Map labels are described in the FITS extension.'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 5, ("COMMENT", 'Example:'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 6, ("COMMENT", 'from astropy.io import fits as pyfits'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 7, ("COMMENT", 'img = pyfits.open(<filename>)'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 8, ("COMMENT", 'map_labels = img[1].data'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 9,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 10, ("COMMENT", 'TEMPORAL INFORMATION'))
+        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 11,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("DATE") + 1,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("DATE") + 2,
+                              ("COMMENT", 'INSTRUMENT & SPACECRAFT STATE DURING OBSERVATION'))
+        pri_hdu.header.insert(pri_hdu.header.index("DATE") + 3,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 1,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 2, ("COMMENT", 'POINTING & PROJECTION'))
+        pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 3,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 1,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+        pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 2, ("COMMENT", 'FILE PROVENANCE'))
+        pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 3,
+                              ("COMMENT", '------------------------------------------------------------------------'))
+
+        # Thematic map feature list (Secondary HDU extension)
+        map_val = []
+        map_label = []
+        for key, value in SOLAR_CLASS_INDEX.items(): #sorted(SOLAR_CLASS_INDEX.items(), key=lambda p: (lambda k, v: (v, k))):
+            map_label.append(key)
+            map_val.append(value)
+        c1 = fits.Column(name="Thematic Map Value", format="B", array=np.array(map_val))
+        c2 = fits.Column(name="Feature Name", format="22A", array=np.array(map_label))
+        bintbl_hdr = fits.Header([("XTENSION", "BINTABLE")])
+        sec_hdu = fits.BinTableHDU.from_columns([c1, c2], header=bintbl_hdr)
+
+        # Output thematic map as the primary HDU and the list of map features as an extension BinTable HDU
+        hdu = fits.HDUList([pri_hdu, sec_hdu])
+        hdu.writeto(self.filename, overwrite=True, checksum=True)
 
 
 if __name__ == "__main__":
