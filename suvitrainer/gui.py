@@ -18,7 +18,8 @@ matplotlib.use("TkAgg")
 
 
 class VerticalScrolledFrame(Frame):
-    """A pure Tkinter scrollable frame that actually works!
+    """
+    A pure Tkinter scrollable frame that actually works!
     * Use the 'interior' attribute to place widgets inside the scrollable frame
     * Construct and pack/place/grid normally
     * This frame only allows vertical scrolling
@@ -65,9 +66,12 @@ class VerticalScrolledFrame(Frame):
 
 
 class CustomToolbar(NavigationToolbar2TkAgg):
-    def __init__(self, canvas_, parent_, editframe, app):
+    """
+    A custom Matplotlib toolbar that allows for a lasso selection when no tool is selected
+    """
+    def __init__(self, canvas_, parent_, edit_frame, app):
         self.parent_frame = parent_
-        self.editframe = editframe
+        self.edit_frame = edit_frame
         self.toolitems = (
             ('Home', "Reset zoom", 'home', 'home'),
             ('Back', 'Undo one zoom step', 'back', 'back'),
@@ -85,17 +89,17 @@ class CustomToolbar(NavigationToolbar2TkAgg):
     def pan(self):
         NavigationToolbar2TkAgg.pan(self)
         if self._active:
-            self.editframe.config(background='white', text='Pan')
+            self.edit_frame.config(background='white', text='Pan')
         else:
-            self.editframe.config(background='red', text='Draw')
+            self.edit_frame.config(background='red', text='Draw')
             self.app.change_class()
 
     def zoom(self):
         NavigationToolbar2TkAgg.zoom(self)
         if self._active:
-            self.editframe.config(background='white', text='Zoom')
+            self.edit_frame.config(background='white', text='Zoom')
         else:
-            self.editframe.config(background='red', text='Draw')
+            self.edit_frame.config(background='red', text='Draw')
             self.app.change_class()
 
 
@@ -574,3 +578,5 @@ class App(tk.Tk):
                          self.sun_radius_pixel - 5,
                          self.selection_array,
                          SOLAR_CLASS_INDEX['quiet_sun'])
+
+
