@@ -3,6 +3,8 @@ import matplotlib
 
 DELIMITER = '|'
 
+TRAINER = "Marcus Hughes"
+
 BASE_URL = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/"
 
 PRODUCTS = ['suvi-l1b-fe094', 'suvi-l1b-fe131', 'suvi-l1b-fe171',

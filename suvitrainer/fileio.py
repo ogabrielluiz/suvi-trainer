@@ -1,14 +1,16 @@
-from datetime import datetime, timedelta
-from astropy.io import fits
-from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER
-import urllib.request
-from bs4 import BeautifulSoup
-import re
 import os
-import numpy as np
+import re
+import urllib.request
+from datetime import datetime, timedelta
 from multiprocessing.dummy import Pool as ThreadPool
-from dateutil import parser as date_parser
+
 import matplotlib.pyplot as plt
+import numpy as np
+from astropy.io import fits
+from bs4 import BeautifulSoup
+from dateutil import parser as date_parser
+
+from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER, TRAINER
 
 
 class Fetcher:
@@ -373,6 +375,8 @@ class Outgest:
         pri_hdu.header.append(("DATE-BEG", date_beg, "sun observation start time on sat"))
         pri_hdu.header.append(("DATE-END", date_end, "sun observation end time on sat"))
         pri_hdu.header.append(("DATE", date_now, "file generation time"))
+        pri_hdu.header.append(("EXPERT", TRAINER, "person who labeled image"))
+        pri_hdu.header.append(("DATE-LAB", datetime.now().isoformat(), "date of labeling for the image"))
 
         # Instrument & Spacecraft State during Observation
         pri_hdu.header.append(("EXPTIME", 1., "[s] effective imaging exposure time"))
