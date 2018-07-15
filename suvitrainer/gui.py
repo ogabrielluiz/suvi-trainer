@@ -2,18 +2,16 @@ import tkinter as tk
 from tkinter import *  # bad idea... but I did it
 from tkinter import messagebox, ttk
 
+import matplotlib.pyplot as plt
 import numpy as np
-from astropy.io import fits
+from matplotlib import path
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.widgets import LassoSelector
 from skimage import draw
 from sunpy import sun, time
 
-from .config import *
-
-from matplotlib import path
-import matplotlib.pyplot as plt
-from matplotlib.widgets import LassoSelector
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from suvitrainer.fileio import Outgest
+from .config import *
 
 matplotlib.use("TkAgg")
 
@@ -141,8 +139,6 @@ class App(tk.Tk):
     def assign_defaults(self):
         '''assigns variables for many graphical defaults'''
         self.single_color_theme = 'yellow'  # color used for the single color menus
-        # self.option_frame_height =  300 # pixels tall the option/configuration frame is
-        # self.canvas_size = (10, 5) # size of the canvas frame (in inches)
         self.canvas_size = (10, 5)  # size of the canvas frame (in inches)
         self.subplot_grid_spec = {'wspace': 0, 'hspace': 0, 'left': 0, 'bottom': 0, 'right': 1,
                                   'top': 1}  # spacing of subplots in canvas
@@ -164,18 +160,6 @@ class App(tk.Tk):
 
     def save(self):
         Outgest(self.output, self.selection_array.astype('uint8'), self.headers).save()
-        # fits.writeto(self.output, data=self.selection_array, overwrite=True)
-        # with fits.open(self.image_directory + self.group[DEFAULT_HEADER]) as f:
-        #     header = f[0].header
-        # header['channels'] = DELIMITER.join(list(self.group.keys()))
-        # header['imgdir'] = self.image_directory
-        # for key, path in self.group.items():
-        #     header[key] = path.split(self.image_directory)[-1]  # self.image_directory + path
-        # ordered_solar_classes = dict([(index, label) for label, index in SOLAR_CLASSES])
-        # ordered_solar_classes = [ordered_solar_classes[index] for index in range(len(ordered_solar_classes))]
-        # ordered_solar_classes = DELIMITER.join(ordered_solar_classes)
-        # header['classes'] = ordered_solar_classes
-        # fits.writeto(self.output, data=self.selection_array, header=header, overwrite=True)
 
     def on_exit(self):
         """When you click to exit, this function is called"""
@@ -312,7 +296,6 @@ class App(tk.Tk):
                                                 background='red')
         toolbarframe = tk.Frame(self.toolbarcenterframe)
         toolbar = CustomToolbar(self.canvas, toolbarframe, self.toolbarcenterframe, self)
-        # toolbar = NavigationToolbar2TkAgg(self.canvas, toolbarframe) #self.canvas_frame)
 
         toolbar.update()
         self.fig.canvas.toolbar.set_message = lambda x: ""  # remove state reporting
