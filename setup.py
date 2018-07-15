@@ -20,4 +20,7 @@ setup(name='suvitrainer',
                         'scikit-image',
                         'matplotlib',
                         'deepdish',
-                        'bs4'])
+                        'bs4',
+                        'requests',
+                        'suds-jurko',
+                        'drms'])

@@ -8,6 +8,7 @@ import numpy as np
 from multiprocessing.dummy import Pool as ThreadPool
 from dateutil import parser as date_parser
 
+import matplotlib.pyplot as plt
 
 class Fetcher:
     """ retrieves channel images for a specific time """
@@ -29,8 +30,45 @@ class Fetcher:
         For all products in products, will call the correct fetch routine and download an image
         """
         pool = ThreadPool()
-        results = pool.map(self.fetch_suvi, self.products)
-        return results
+
+        def fn_map(product):
+            if product is 'halpha':
+                return self.fetch_halpha()
+            else:
+                return self.fetch_suvi(product)
+
+        results = pool.map(fn_map, self.products)
+        return {product:(head, data) for product, head, data in results}
+
+    def fetch_halpha(self):
+        """
+        pull halpha from that time from Virtual Solar Observatory GONG archive
+        :return: "halpha" and then a fits header and data object for the GONG image at that time
+        TODO: what if no image were found?
+        """
+        from sunpy.net import vso
+        from astropy.units import Quantity
+
+        def time_interval(time):
+            """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
+            return time - timedelta(minutes=1), time + timedelta(minutes=1)
+
+        # setup the query for an halpha image and fetch, saving the image in the current directory
+        client = vso.VSOClient()
+        halpha, source = Quantity(656.28, "nm"), "gong"
+        query = client.search(vso.attrs.Time(*time_interval(self.date)),
+                             vso.attrs.Source(source),
+                             vso.attrs.Wavelength(halpha))[0]
+
+        result = client.fetch([query], path="./").wait()
+
+        # open the image and remove the file
+        with fits.open(result[0]) as hdu:
+            head = hdu[1].header
+            data = hdu[1].data
+        os.remove(result[0])
+
+        return "halpha",head, data
 
     def fetch_suvi(self, product):
         """
@@ -240,6 +278,11 @@ class Outgest:
 
 
 if __name__ == "__main__":
-    f = Fetcher(datetime(2018, 6, 30, 5, 13))
-    f.fetch()
+    f = Fetcher(datetime(2018, 6, 30, 5, 13), products=['halpha'])
+    fetched = f.fetch()
+    head, data = fetched['halpha']
+    fig, ax = plt.subplots()
+    ax.imshow(data)
+    plt.show()
+    #f.fetch()
 
