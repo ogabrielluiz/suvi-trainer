@@ -6,9 +6,10 @@ DELIMITER = '|'
 BASE_URL = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/"
 
 PRODUCTS = ['suvi-l1b-fe094', 'suvi-l1b-fe131', 'suvi-l1b-fe171',
-            'suvi-l1b-fe195', 'suvi-l1b-fe284', 'suvi-l1b-he304']
+            'suvi-l1b-fe195', 'suvi-l1b-fe284', 'suvi-l1b-he304', 'halpha']
 
-PRODUCTS_MAP = {p: "c" + str(int(p.split("-")[-1][2:])) for p in PRODUCTS}
+PRODUCTS_MAP = {p: "c" + str(int(p.split("-")[-1][2:])) for p in PRODUCTS if p is not 'halpha'}
+PRODUCTS_MAP['halpha'] = 'chalpha'
 
 SOLAR_CLASSES = [('unlabeled', 0),
                  ('empty_outer_space', 1),

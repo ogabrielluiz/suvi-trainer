@@ -22,13 +22,14 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    date = datetime(2018, 5, 25, 18, 36)
+    date = datetime(2018, 5, 23, 18, 25)
 
     f = Fetcher(date)
     results = f.fetch()
 
     data, headers = dict(), dict()
-    for product, head, d in results:
+    for product in results:
+        head, d = results[product]
         data[PRODUCTS_MAP[product]] = d
         headers[PRODUCTS_MAP[product]] = head
 

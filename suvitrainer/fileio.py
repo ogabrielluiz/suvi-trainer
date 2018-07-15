@@ -3,12 +3,13 @@ from astropy.io import fits
 from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER
 import urllib.request
 from bs4 import BeautifulSoup
-import re, os
+import re
+import os
 import numpy as np
 from multiprocessing.dummy import Pool as ThreadPool
 from dateutil import parser as date_parser
-
 import matplotlib.pyplot as plt
+
 
 class Fetcher:
     """ retrieves channel images for a specific time """
@@ -40,15 +41,20 @@ class Fetcher:
         results = pool.map(fn_map, self.products)
         return {product:(head, data) for product, head, data in results}
 
-    def fetch_halpha(self):
+    def fetch_halpha(self, verbose=True, correct=True):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
+        :param verbose: print help information as running
+        :param correct: remove nans and negatives
         :return: "halpha" and then a fits header and data object for the GONG image at that time
-        TODO: what if no image were found?
+        TODO: what if no image is found?
         """
         from sunpy.net import vso
         from astropy.units import Quantity
+        from skimage.transform import AffineTransform, warp
 
+        if verbose:
+            print("Requesting halpha")
         def time_interval(time):
             """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
             return time - timedelta(minutes=1), time + timedelta(minutes=1)
@@ -68,14 +74,31 @@ class Fetcher:
             data = hdu[1].data
         os.remove(result[0])
 
+        # scale halpha to suvi
+        scale = 2.35
+        tform = AffineTransform(scale=(scale, scale))  # , translation=(-1280/2,-1280/2))
+        data = warp(data, tform, output_shape=(1280, 1280))
+        tform = AffineTransform(
+            translation=(-(640 - 1024 / scale), -(640 - 1024 / scale)))  # , translation=(-1280/2,-1280/2))
+        data = warp(data, tform)
+
+        if correct:
+            data[np.isnan(data)] = 0
+            data[data < 0] = 0
+
         return "halpha",head, data
 
-    def fetch_suvi(self, product):
+    def fetch_suvi(self, product, verbose=True, correct=True):
         """
         Given a product keyword, downloads the image into the current directory.
         :param product: the keyword for the product, e.g. suvi-l1b-fe094
+        :param verbose: print information as running
+        :param correct: remove nans and negatives
         """
         url = self.suvi_base_url + product + "/{}/{:02d}/{:02d}".format(self.date.year, self.date.month, self.date.day)
+        if verbose:
+            print("Requesting from {}".format(url))
+
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as response:
             page = response.read()
@@ -102,6 +125,12 @@ class Fetcher:
             head = hdu[0].header
             data = hdu[0].data
         os.remove("{}.fits".format(product))
+
+        if correct:
+            data[np.isnan(data)] = 0
+            data[data < 0] = 0
+
+        data, head = self.align_solar_fov(head, data, 2.5, 2.0, rotate=False, scale=False)
 
         return product, head, data
 
@@ -158,6 +187,154 @@ class Fetcher:
             raise ValueError("Timestamps not detected in filename: %s" % filename)
         return filename, dt_start, dt_end, match.group("platform"), match.group("product")
 
+    @staticmethod
+    def align_solar_fov(header, data, cdelt_min, naxis_min,
+                        translate_origin=True, rotate=True, scale=True):
+        """
+        Apply field of view image corrections
+
+        :param header: FITS header
+        :param data: Image data
+        :param cdelt_min: Minimum plate scale for images (static run config param)
+        :param naxis_min: Minimum axis dimension for images (static run config param)
+        :param translate_origin: Translate image to specified origin (dtype=bool)
+        :param rotate: Rotate image about origin (dtype=bool)
+        :param scale: Scale image (dtype=bool)
+
+        :rtype: numpy.ndarray
+        :return: data_corr (corrected/aligned image)
+        :rtype: astropy.io.fits.header Header instance
+        :return: upd_meta (updated metadata after image corrections)
+
+        NOTES: (1) The associative property of matrix multiplication makes it possible to multiply
+                   transformation matrices together to produce a single transformation. However, the order
+                   of each transformation matters. In this algorithm, the order is:
+                   1. Translate image center to origin (required)
+                   2. Translate image solar disk center to origin
+                   3. Rotate image about the solar disk center to align with solar spin axis
+                   4. Scale the image so that each pixel is square
+                   5. Translate the image to the image center (required)
+               (2) In python, the image transformations are about the axis origin (0, 0). Therefore, the image point
+                   to rotate about should be shifted to (0, 0) before the rotation.
+               (3) Axis 1 refers to the physical x-axis and axis 2 refers to the physical y-axis, e.g. CRPIX1 is
+                   the center pixel value wrt the x-axis and CRPIX2 is wrt the y-axis.
+        """
+        from skimage.transform import warp
+        from skimage.transform import ProjectiveTransform
+
+        # Start with 3x3 identity matrix and original header metadata (no corrections)
+        t_matrix = np.identity(3)
+        upd_meta = header
+
+        # (1) Translate the image center to the origin (required transformation)
+
+        # Read in required keywords from header
+        try:
+            img_dim = (header["NAXIS1"], header["NAXIS2"])
+        except KeyError:
+            return None, None
+        else:
+            # Transformation matrix
+            t_matrix = np.matmul(np.array([[1., 0., -(img_dim[0] + 1) / 2.],
+                                           [0., 1., -(img_dim[1] + 1) / 2.],
+                                           [0., 0., 1.]]), t_matrix)
+
+        # (2) Translate image solar disk center to origin
+        if translate_origin:
+            # Read in required keywords from header
+            try:
+                sun_origin = (header["CRPIX1"], header["CRPIX2"])
+            except KeyError:
+                return None, None
+            else:
+                # Transformation matrix
+                t_matrix = np.matmul(np.array([[1., 0., -sun_origin[0] + (img_dim[0] + 1) / 2.],
+                                               [0., 1., -sun_origin[1] + (img_dim[1] + 1) / 2.],
+                                               [0., 0., 1.]]), t_matrix)
+
+                # Update metadata: CRPIX1 and CRPIX2 are at the center of the image
+                upd_meta["CRPIX1"] = (img_dim[0] + 1) / 2.
+                upd_meta["CRPIX2"] = (img_dim[1] + 1) / 2.
+
+        # (3) Rotate image to align with solar spin axis
+        if rotate:
+            # Read in required keywords from header
+            try:
+                PC1_1 = header['PC1_1']
+                PC1_2 = header['PC1_2']
+                PC2_1 = header['PC2_1']
+                PC2_2 = header['PC2_2']
+            except KeyError:
+                try:
+                    CROTA = header['CROTA'] * (np.pi / 180.)  # [rad]
+                    plt_scale = (header["CDELT1"], header["CDELT2"])
+                except KeyError:
+                    return None, None
+                else:
+                    t_matrix = np.matmul(np.array([[np.cos(CROTA), -np.sin(CROTA) * (plt_scale[1] / plt_scale[0]), 0.],
+                                                   [np.sin(CROTA) * (plt_scale[0] / plt_scale[1]), np.cos(CROTA), 0.],
+                                                   [0., 0., 1.]]), t_matrix)
+
+                    # Update metadata: CROTA is zero and PCi_j matrix is the identity matrix
+                    upd_meta["CROTA"] = 0.
+                    upd_meta["PC1_1"] = 1.
+                    upd_meta["PC1_2"] = 0.
+                    upd_meta["PC2_1"] = 0.
+                    upd_meta["PC2_2"] = 1.
+            else:
+                t_matrix = np.matmul(np.array([[PC1_1, PC1_2, 0.],
+                                               [PC2_1, PC2_2, 0.],
+                                               [0., 0., 1.]]), t_matrix)
+
+                # Update metadata: CROTA is zero and PCi_j matrix is the identity matrix
+                upd_meta["CROTA"] = 0.
+                upd_meta["PC1_1"] = 1.
+                upd_meta["PC1_2"] = 0.
+                upd_meta["PC2_1"] = 0.
+                upd_meta["PC2_2"] = 1.
+
+        # (4) Scale the image so that each pixel is square
+        if scale:
+            # Read in required keywords from header
+            try:
+                plt_scale = (header["CDELT1"], header["CDELT2"])
+            except KeyError:
+                return None, None
+            else:
+                # Product of minimum plate scale and axis dimension
+                min_scl = cdelt_min * naxis_min
+
+                # Determine smallest axis
+                naxis_ref = min(img_dim)
+
+                # Transformation matrix
+                t_matrix = np.matmul(np.array([[(plt_scale[0] * naxis_ref) / min_scl, 0., 0.],
+                                               [0., (plt_scale[1] * naxis_ref) / min_scl, 0.],
+                                               [0., 0., 1.]]), t_matrix)
+
+                # Update the metadata: CDELT1 and CDELT2 are scaled by factor to make each pixel square
+                upd_meta["CDELT1"] = plt_scale[0] / ((plt_scale[0] * naxis_ref) / min_scl)
+                upd_meta["CDELT2"] = plt_scale[1] / ((plt_scale[1] * naxis_ref) / min_scl)
+
+        # (5) Translate the image to the image center (required transformation)
+        t_matrix = np.matmul(np.array([[1., 0., (img_dim[0] + 1) / 2.],
+                                       [0., 1., (img_dim[1] + 1) / 2.],
+                                       [0., 0., 1.]]), t_matrix)
+
+        # Transform the image with all specified operations
+        # NOTE: The inverse transformation needs to be applied because the transformation matrix
+        # describes operations on the pixel coordinate frame instead of the image itself. The inverse
+        # transformation will perform the intended operations on the image. Also, any values outside of
+        # the image boundaries are set to zero.
+        data_corr = warp(data, ProjectiveTransform(matrix=t_matrix).inverse, cval=0., preserve_range=True)
+
+        # Check if NaNs are generated from transformation
+        try:
+            assert not np.any(np.isnan(data_corr))
+        except AssertionError:
+            pass
+
+        return data_corr, upd_meta
 
 class Outgest:
     """ saves a thematic map in the correct format for classification """

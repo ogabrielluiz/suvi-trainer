@@ -208,7 +208,7 @@ class App(tk.Tk):
         self.make_canvas_frame()
         self.disable_singlecolor()
 
-    def configure_threecolor_image(self):
+    def configure_threecolor_image(self, scale=False):
         ''' configures the three color image according to the requested parameters '''
         order = {'red': 0, 'green': 1, 'blue': 2}
         self.image = np.zeros((self.shape[0], self.shape[1], 3))
@@ -217,36 +217,27 @@ class App(tk.Tk):
             self.image[:, :, order[color]] = self.data[channel]
             self.image[:, :, order[color]] = np.power(self.image[:, :, order[color]],
                                                       self.multicolorpower[color].get())
-            # set outliers above 5 sigma to 0
-            # self.image[np.where(self.image[:, :, order[color]] > np.mean(self.image[:, :, order[color]]) + 5 * np.std(
-             #   self.image[:, :, order[color]]))] = 0
-
-            # overmax = self.image[:,:,order[color]] > self.multicolormax[color].get() * np.max(self.image[:,:,order[color]])
-            # undermin = self.image[:,:,order[color]] < self.multicolormin[color].get() * np.max(self.image[:,:,order[color]])
-            # self.image[:,:,order[color]][overmax] = self.multicolormax[color].get()
-            # self.image[:,:,order[color]][undermin] = self.multicolormin[color].get()
+            if scale:
+                lower_limit = np.nanpercentile(self.image[:, :, order[color]], 0.5)
+                upper_limit = np.nanpercentile(self.image[:, :, order[color]], 99.5)
+                self.image[np.where(self.image[:, :, order[color]] < lower_limit)] = lower_limit
+                self.image[np.where(self.image[:, :, order[color]] > upper_limit)] = upper_limit
 
         for color, index in order.items():
             self.image[:, :, index] /= np.nanmax(self.image[:, :, index])
-        print(self.image)
 
-
-    def configure_singlecolor_image(self):
+    def configure_singlecolor_image(self, scale=False):
         ''' configures the three color image according to the requested parameters '''
         self.image = self.data[self.singlecolorvar.get()]
         self.image = np.power(self.image, self.singlecolorpower.get())
 
-        # exclude outliers above 5 sigma
-        self.image[self.image > np.mean(self.image) + 5 * np.std(self.image)] = 0
+        if scale:
+            lower_limit = np.nanpercentile(self.image, 0.5)
+            upper_limit = np.nanpercentile(self.image, 99.5)
+            self.image[np.where(self.image < lower_limit)] = lower_limit
+            self.image[np.where(self.image > upper_limit)] = upper_limit
 
-        # overmax = self.image > self.singlecolormax.get() * np.max(self.image)
-        # undermin = self.image < self.singlecolormin.get() * np.max(self.image)
-        # self.image[overmax] = self.singlecolormax.get()
-        # self.image[undermin] = self.singlecolormin.get()
-        # self.imageplot.set_clim(np.nanmin(self.image) * self.singlecolormin.get(),
-        #                        np.nanmax(self.image) * self.singlecolormax.get())
-
-        self.image /= np.max(self.image)
+        self.image /= np.nanmax(self.image)
 
     def updateArray(self, array, indices, value):
         ''' Updates array so that pixels at indices take on the value '''
