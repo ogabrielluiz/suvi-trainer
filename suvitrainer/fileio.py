@@ -59,7 +59,7 @@ class Fetcher:
             print("Requesting halpha")
         def time_interval(time):
             """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
-            return time - timedelta(minutes=1), time + timedelta(minutes=1)
+            return time - timedelta(minutes=3), time + timedelta(minutes=3)
 
         # setup the query for an halpha image and fetch, saving the image in the current directory
         client = vso.VSOClient()
@@ -132,7 +132,7 @@ class Fetcher:
             data[np.isnan(data)] = 0
             data[data < 0] = 0
 
-        data, head = self.align_solar_fov(head, data, 2.5, 2.0, rotate=False, scale=False)
+        data, head = self.align_solar_fov(head, data, 2.5, 2.0, rotate=True, scale=False)
 
         return product, head, data
 
