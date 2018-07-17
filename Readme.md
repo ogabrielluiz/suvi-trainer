@@ -25,6 +25,11 @@ methods of specifying which date to run on: simply a date string (2018-08-05T17:
 strings where one is on each line, or a url to an online list of dates. The default is to pull using the url for [dates.txt](dates.txt) stored 
 in this repository. 
 
+## Data
+The output of training is saved as a FITS file which is later converted into a labeled png. 
+I will share the results of labeling with this tool using [Google Drive](https://drive.google.com/open?id=1QYdTTFDYs9Yg1g2zs7rxpj8znXCOwPeY). 
+A [couple examples](examples/) are available. This labeled data is then used in [machine learning classification of solar images](https://github.com/jmbhughes/smachy). 
+
 ## Contributing
 
 Please contact me ([email](mailto:hughes.jmb@gmail.com) or just through pull/issue requests) for updates. 
