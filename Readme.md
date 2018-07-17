@@ -13,43 +13,17 @@ for development and testing purposes. At the moment, it is advised to run this c
 Python 3.5. Installation should only require running the `setup.py` script. 
  
 ### Installing
-After creating a separate virtual environment, installation should be simply:
+After [creating a separate virtual environment](https://realpython.com/python-virtual-environments-a-primer/), installation should be simply:
 ```
-python setup.py install
-```
-The [scripts](./scripts) will then allow you to execute the training tool. The scripts require a HDF5 database of images
-to run, called the groups database. It collects concurrent images at different wavelengths together for labeling; see 
-the [example](./examples/groups.h5). If you're labeling images for me, this should all be provided and you will only 
-need to run [easy_gui.py](./scripts/easy_gui.py). 
-
-### Example
-
-Assuming you have been given a pre-built image directory, grouping, and labels directory 
-you should just be able to move into it and call easy_gui.py. 
-You can also call easy_gui.py from outside the directory by using the --directory flag 
-and then including where your labeling directory is:
-
-```
-easy_gui.py --directory marcus_labeling
+python3 setup.py install
 ```
 
-If you're not so fortunate to have been given a pre-built image directory, here is how you can do it:
-
-1. Make a labeling directory. I'll call it `user_labeling` here. 
-2. Make a subdirectory for all your images. `cd user_labeling; mkdir images`
-3. Divide your images into subdirectories, one subdirectory for each channel, e.g. 304, 195, 171. 
-4. Use the build_file_database tool to create a database index for your images. 
-It will group them together into "concurrent" observations: a mega-image combining one image 
-from each channel at the "same" time, or as close to it as it can. 
-```build_file_databases.py images user_labeling/groups.h5 --repeat```
-5. In your labeling directory make a "labeled" subdirectory. `cd user_labeling; mkdir labeled`
-
-## Todo
-* Supplement information on how to create groups database and get running from raw imagse
-* Provide Docker deployment version
-* Add feature to overlay drawn regions onto the Sun
-* Add more I/O for revising images
-* Test on more systems for bugs
+### Running
+The [run.py](scripts/run.py) script should provide all needed functionality. It takes a couple optional arguments: verbosity and dates.
+The verbosity, `-v` or `--verbose` argument will print helpful information while running. The `date` option allows three
+methods of specifying which date to run on: simply a date string (2018-08-05T17:52), a path to a local file that contains a list of date 
+strings where one is on each line, or a url to an online list of dates. The default is to pull using the url for [dates.txt](dates.txt) stored 
+in this repository. 
 
 ## Contributing
 
@@ -71,4 +45,4 @@ Now you're set to use `easy_gui.py`. Note that there is a more customizable vers
 
 ## Acknowledgments
 
-* Guidance from Dan Seaton and Jon Darnell
+* Guidance from Dan Seaton, Jon Darnel, and Vicki Hsu

@@ -65,12 +65,13 @@ if __name__ == "__main__":
                          "It must be a link to a dates file, a path to a local dates file, or a date. " +
                          "Date formatting is not picky but an acceptable template is 2018-08-01T23:15")
 
+    # pick a date to annotate
     date = random.sample(dates, 1)[0]
 
     if args.verbose:
         print("Running for {}".format(date))
 
-    # Load data
+    # Load data and organize input
     f = Fetcher(date)
     results = f.fetch()
 
@@ -80,6 +81,7 @@ if __name__ == "__main__":
         data[PRODUCTS_MAP[product]] = d
         headers[PRODUCTS_MAP[product]] = head
 
-    out_file_name = "thmap_{}_{}.fits".format(date.strftime("%Y%m%d%H%M%S"), datetime.now().strftime("%Y%m%d%H%M%S"))
-    App(data, out_file_name,
-        None, None, headers).mainloop()
+    # the output filenames are structured as the "thmap_[date of observation]_[date of labeling].fits"
+    out_file_name = "thmap_{}_{}.fits".format(date.strftime("%Y%m%d%H%M%S"),
+                                              datetime.now().strftime("%Y%m%d%H%M%S"))
+    App(data, out_file_name, None, None, headers).mainloop()
