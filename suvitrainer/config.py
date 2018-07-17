@@ -3,7 +3,7 @@ import matplotlib
 
 DELIMITER = '|'
 
-TRAINER = "Marcus Hughes"
+TRAINER = "marcushughes"
 
 BASE_URL = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/"
 
