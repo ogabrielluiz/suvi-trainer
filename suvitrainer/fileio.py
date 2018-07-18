@@ -1,4 +1,5 @@
 import os
+import ftplib
 import re
 import urllib.request
 from datetime import datetime, timedelta
@@ -10,7 +11,6 @@ from astropy.io import fits
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 from suvitrainer.config import Config
-#from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER, TRAINER
 
 
 class Fetcher:
@@ -140,6 +140,7 @@ class Fetcher:
     @staticmethod
     def parse_filename_meta(filename):
         """
+        taken from suvi code by vhsu
         Parse the metadata from a product filename, either L1b or l2.
            - file start
            - file end
@@ -194,6 +195,7 @@ class Fetcher:
     def align_solar_fov(header, data, cdelt_min, naxis_min,
                         translate_origin=True, rotate=True, scale=True):
         """
+        taken from suvi code by vhsu
         Apply field of view image corrections
 
         :param header: FITS header
@@ -339,6 +341,7 @@ class Fetcher:
 
         return data_corr, upd_meta
 
+
 class Outgest:
     """ saves a thematic map in the correct format for classification """
     def __init__(self, filename, thematic_map, headers, config_path):
@@ -365,7 +368,22 @@ class Outgest:
             card = hdr_src.cards[card_ind]
             hdu.header.append((card.keyword, card.value, card.comment))
 
+    def upload(self):
+        if self.config.upload:
+            try:
+                session = ftplib.FTP('ftp.jmbhughes.com', 'trainer@jmbhughes.com', self.config.upload_password)
+                file = open(self.filename, 'rb')
+                session.storbinary('STOR ' + self.filename, file)  # send the file
+                file.close()  # close file and FTP
+                session.quit()
+                success = True
+            except:
+                success = False
+            if success:
+                os.remove(self.filename)
+
     def save(self):
+        """ modified from suvi code by vhsu """
         pri_hdu = fits.PrimaryHDU(data=self.thmap)
 
         # Temporal Information

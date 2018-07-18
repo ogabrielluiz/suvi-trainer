@@ -11,6 +11,8 @@ from matplotlib.widgets import LassoSelector
 from skimage import draw
 from sunpy import sun, time
 
+import os
+
 from suvitrainer.fileio import Outgest
 from suvitrainer.config import Config
 
@@ -162,7 +164,9 @@ class App(tk.Tk):
         self.sun_radius_pixel = (sun_radius_angular / arcsec_per_pixel)
 
     def save(self):
-        Outgest(self.output, self.selection_array.astype('uint8'), self.headers, self.config_path).save()
+        out = Outgest(self.output, self.selection_array.astype('uint8'), self.headers, self.config_path)
+        out.save()
+        out.upload()
 
     def on_exit(self):
         """When you click to exit, this function is called"""

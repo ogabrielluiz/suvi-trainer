@@ -10,6 +10,14 @@ class Config:
 
         self.products = config['train']['products']
         self.products_map = {p: "c" + str(int(p.split("-")[-1][2:])) if p!= "halpha" else "halpha" for p in self.products}
+
+        if 'upload' in config['train']:
+            self.upload = config['train']['upload']
+            self.upload_password = config['train']['upload_password']
+        else:
+            self.upload = False
+            self.upload_password = None
+
         self.expert = config['train']['name']
         self.suvi_base_url = config['train']['suvi_url']
 
