@@ -22,7 +22,6 @@ class Config:
         self.suvi_base_url = config['train']['suvi_url']
 
         self.solar_classes = [(c, int(n)) for c,n in config['classes'].items()]
-        print(self.solar_classes)
         self.solar_class_index = {c: n for c, n in self.solar_classes}
         self.solar_class_name = {n: c for c, n in config['classes'].items()}
         self.solar_colors = config['display']['colors']

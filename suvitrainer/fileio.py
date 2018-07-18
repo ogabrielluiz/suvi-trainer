@@ -13,12 +13,32 @@ from dateutil import parser as date_parser
 from suvitrainer.config import Config
 
 
+def convert_time_string(date_str):
+    """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
+    dt, _, us = date_str.partition(".")
+    dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
+    return dt
+
+
+def get_dates_file(path):
+    with open(path) as f:
+        dates = f.readlines()
+    return [(convert_time_string(date_string.split(" ")[0]), float(date_string.split(" ")[1]))
+            for date_string in dates]
+
+
+def get_dates_link(url):
+    # TODO: remove this temp.txt and make it less hardcoded, e.g. check for permissions
+    urllib.request.urlretrieve(url, "temp.txt")
+    dates = get_dates_file("temp.txt")
+    os.remove("temp.txt")
+    return dates
+
 class Fetcher:
     """ retrieves channel images for a specific time """
 
     def __init__(self, date,
-                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
-      "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
+                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171", "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
                  suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/"):
         """
         :param date: a date object the indicates when the observation is from
@@ -485,5 +505,3 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.imshow(data)
     plt.show()
-    #f.fetch()
-

@@ -9,9 +9,11 @@ from datetime import datetime, timedelta
 
 from dateutil import parser as dateparser
 
-from suvitrainer.fileio import Fetcher
+from suvitrainer.fileio import Fetcher, get_dates_link, get_dates_file
 from suvitrainer.gui import App
 from suvitrainer.config import Config
+
+import numpy as np
 
 
 def get_args():
@@ -25,29 +27,6 @@ def get_args():
                     help="path to config file",
                     default="config.json")
     return ap.parse_args()
-
-
-def convert_time_string(date_str):
-    """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
-    dt, _, us= date_str.partition(".")
-    dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
-    us = int(us.rstrip("Z"), 10)
-    return dt + timedelta(microseconds=us)
-
-
-def get_dates_file(path):
-    with open(path) as f:
-        dates = f.readlines()
-    return [convert_time_string(date_string) for date_string in dates]
-
-
-def get_dates_link(url):
-    # TODO: remove this temp.txt and make it less hardcoded, e.g. check for permissions
-    urllib.request.urlretrieve(url, "temp.txt")
-    dates = get_dates_file("temp.txt")
-    os.remove("temp.txt")
-    return dates
-
 
 if __name__ == "__main__":
     args = get_args()
@@ -70,7 +49,8 @@ if __name__ == "__main__":
                          "Date formatting is not picky but an acceptable template is 2018-08-01T23:15")
 
     # pick a date to annotate
-    date = random.sample(dates, 1)[0]
+    date = np.random.choice([date for date, prob in dates],
+                            p=[prob for date, prob in dates])
 
     if args.verbose:
         print("Running for {}".format(date))

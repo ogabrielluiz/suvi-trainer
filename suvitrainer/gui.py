@@ -11,8 +11,6 @@ from matplotlib.widgets import LassoSelector
 from skimage import draw
 from sunpy import sun, time
 
-import os
-
 from suvitrainer.fileio import Outgest
 from suvitrainer.config import Config
 
