@@ -396,7 +396,7 @@ class Outgest:
         pri_hdu.header.append(("DATE-END", date_end, "sun observation end time on sat"))
         pri_hdu.header.append(("DATE", date_now, "file generation time"))
         pri_hdu.header.append(("EXPERT", self.config.expert, "person who labeled image"))
-        pri_hdu.header.append(("DATE-LAB", datetime.now().isoformat(), "date of labeling for the image"))
+        pri_hdu.header.append(("DATE-LAB", date_now, "date of labeling for the image"))
 
         # Instrument & Spacecraft State during Observation
         pri_hdu.header.append(("EXPTIME", 1., "[s] effective imaging exposure time"))
