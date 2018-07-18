@@ -28,6 +28,7 @@ def get_args():
                     default="config.json")
     return ap.parse_args()
 
+
 if __name__ == "__main__":
     args = get_args()
     config = Config(args.config)

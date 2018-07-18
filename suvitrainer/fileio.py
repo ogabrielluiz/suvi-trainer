@@ -34,6 +34,7 @@ def get_dates_link(url):
     os.remove("temp.txt")
     return dates
 
+
 class Fetcher:
     """ retrieves channel images for a specific time """
 
