@@ -12,6 +12,7 @@ class Config:
         self.products = config['train']['products']
         self.expert = config['train']['name']
         self.suvi_base_url = config['train']['suvi_url']
+
         self.solar_classes = [(c, n) for c,n in config['classes'].items()]
         self.solar_class_index = {c: n for c, n in config['classes'].items()}
         self.solar_class_name = {n:c for c, n in config['classes'].items()}
@@ -19,6 +20,16 @@ class Config:
         self.color_table = [self.solar_colors[self.solar_class_name[i]] if i in self.solar_class_name else 'black'
                             for i in range(max(list(self.solar_class_index.keys())))]
         self.solar_cmap = matplotlib.colors.ListedColormap(self.color_table)
+
+        self.default = dict()
+        for k,v in config['default'].items():
+            self.default[k] = v
+
+        self.ranges = dict()
+        for k, v in config['ranges'].items():
+            self.ranges[k] = v
+
+        self.boldfont = config['font']['bold']
 
 
 # DELIMITER = '|'
