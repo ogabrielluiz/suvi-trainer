@@ -9,16 +9,17 @@ import numpy as np
 from astropy.io import fits
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
-
-from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER, TRAINER
+from suvitrainer.config import Config
+#from suvitrainer.config import PRODUCTS, BASE_URL, SOLAR_CLASS_INDEX, DEFAULT_HEADER, TRAINER
 
 
 class Fetcher:
     """ retrieves channel images for a specific time """
 
     def __init__(self, date,
-                 products=PRODUCTS,
-                 suvi_base_url=BASE_URL):
+                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
+      "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
+                 suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/"):
         """
         :param date: a date object the indicates when the observation is from
         :param suvi_base_url: the url to the top level goes-16 data page
@@ -340,12 +341,13 @@ class Fetcher:
 
 class Outgest:
     """ saves a thematic map in the correct format for classification """
-    def __init__(self, filename, thematic_map, headers):
+    def __init__(self, filename, thematic_map, headers, config_path):
+        self.config = Config(config_path)
         self.filename = filename
         self.thmap = thematic_map
-        self.ref_hdr = headers[DEFAULT_HEADER]
-        self.start_time = date_parser.parse(headers[DEFAULT_HEADER]['date-obs'])
-        self.end_time = date_parser.parse(headers[DEFAULT_HEADER]['date-obs'])
+        self.ref_hdr = headers[self.config.default['header']]
+        self.start_time = date_parser.parse(self.ref_hdr['date-obs'])
+        self.end_time = date_parser.parse(self.ref_hdr['date-obs'])
         for channel, header in headers.items():
             date = date_parser.parse(header['date-obs'])
             if date < self.start_time:
@@ -375,7 +377,7 @@ class Outgest:
         pri_hdu.header.append(("DATE-BEG", date_beg, "sun observation start time on sat"))
         pri_hdu.header.append(("DATE-END", date_end, "sun observation end time on sat"))
         pri_hdu.header.append(("DATE", date_now, "file generation time"))
-        pri_hdu.header.append(("EXPERT", TRAINER, "person who labeled image"))
+        pri_hdu.header.append(("EXPERT", self.config.expert, "person who labeled image"))
         pri_hdu.header.append(("DATE-LAB", datetime.now().isoformat(), "date of labeling for the image"))
 
         # Instrument & Spacecraft State during Observation
@@ -445,7 +447,7 @@ class Outgest:
         # Thematic map feature list (Secondary HDU extension)
         map_val = []
         map_label = []
-        for key, value in SOLAR_CLASS_INDEX.items(): #sorted(SOLAR_CLASS_INDEX.items(), key=lambda p: (lambda k, v: (v, k))):
+        for key, value in self.config.solar_class_index.items(): #sorted(SOLAR_CLASS_INDEX.items(), key=lambda p: (lambda k, v: (v, k))):
             map_label.append(key)
             map_val.append(value)
         c1 = fits.Column(name="Thematic Map Value", format="B", array=np.array(map_val))

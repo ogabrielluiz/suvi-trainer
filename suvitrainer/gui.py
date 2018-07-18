@@ -4,6 +4,7 @@ from tkinter import messagebox, ttk
 
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib
 from matplotlib import path
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.widgets import LassoSelector
@@ -11,7 +12,7 @@ from skimage import draw
 from sunpy import sun, time
 
 from suvitrainer.fileio import Outgest
-from .config import *
+from suvitrainer.config import Config
 
 matplotlib.use("TkAgg")
 
@@ -103,10 +104,11 @@ class CustomToolbar(NavigationToolbar2TkAgg):
 
 
 class App(tk.Tk):
-    def __init__(self, data, output, group, image_directory, headers,
+    def __init__(self, data, output, group, image_directory, headers, config_path,
                  blank=False, relabel=None, resizable=True):
+        self.config = Config(config_path)
         self.history = []
-        self.header = headers[DEFAULT_HEADER]
+        self.header = headers[self.config['default']['header']]
         self.headers = headers
         self.interpret_header()
         self.group = group
@@ -128,7 +130,7 @@ class App(tk.Tk):
         self.make_gui()
 
         if blank:
-            self.selection_array[:, :] = SOLAR_CLASS_INDEX['unlabeled']
+            self.selection_array[:, :] = self.config.solar_class_index['unlabeled']
         else:  # make default
             self.draw_default()
             self.fig.canvas.draw()
@@ -202,8 +204,8 @@ class App(tk.Tk):
             self.image[:, :, order[color]] = np.power(self.image[:, :, order[color]],
                                                       self.multicolorpower[color].get())
             if scale:
-                lower_limit = np.nanpercentile(self.image[:, :, order[color]], 0.5)
-                upper_limit = np.nanpercentile(self.image[:, :, order[color]], 99.5)
+                lower_limit = np.nanpercentile(self.image[:, :, order[color]], 1)
+                upper_limit = np.nanpercentile(self.image[:, :, order[color]], 99)
                 self.image[np.where(self.image[:, :, order[color]] < lower_limit)] = lower_limit
                 self.image[np.where(self.image[:, :, order[color]] > upper_limit)] = upper_limit
 
@@ -216,8 +218,8 @@ class App(tk.Tk):
         self.image = np.power(self.image, self.singlecolorpower.get())
 
         if scale:
-            lower_limit = np.nanpercentile(self.image, 0.5)
-            upper_limit = np.nanpercentile(self.image, 99.5)
+            lower_limit = np.nanpercentile(self.image, 1)
+            upper_limit = np.nanpercentile(self.image, 99)
             self.image[np.where(self.image < lower_limit)] = lower_limit
             self.image[np.where(self.image > upper_limit)] = upper_limit
 
@@ -260,12 +262,13 @@ class App(tk.Tk):
 
         self.selection_array = np.zeros(self.shape, dtype=np.uint8)
         if self.blank:
-            self.selection_array += SOLAR_CLASS_INDEX['unlabeled']
+            self.selection_array += self.config.solar_class_index['unlabeled']
         else:
             self.draw_default()
         self.history.append(self.selection_array)
         # ordered_solar_classes = dict([(index, label) for label, index in SOLAR_CLASSES])
-        colortable = [SOLAR_COLORS[SOLAR_CLASS_NAME[i]] for i in range(len(SOLAR_CLASSES))]
+        colortable = [self.config.solar_colors[self.config.solar_class_name[i]]
+                      for i in range(len(self.config.solar_classes))]
         cmap = matplotlib.colors.ListedColormap(colortable)
         self.mask = self.previewax.imshow(self.selection_array,
                                           origin='lower',
@@ -393,22 +396,25 @@ class App(tk.Tk):
         self.singlecolormax = tk.DoubleVar()
         self.singlecolordropdown = tk.OptionMenu(self.singlecolorframe, self.singlecolorvar, *channel_choices)
         self.singlecolorscale = tk.Scale(self.singlecolorframe, variable=self.singlecolorpower,
-                                         orient=tk.HORIZONTAL, from_=SINGLECOLOR_RANGE[0], bg=self.single_color_theme,
-                                         to_=SINGLECOLOR_RANGE[1], resolution=SINGLECOLOR_RESOLUTION, length=200)
-        self.singlecolorminscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormin,
-                                            orient=tk.HORIZONTAL, from_=SINGLECOLOR_VRANGE[0],
-                                            bg=self.single_color_theme,
-                                            to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
+                                         orient=tk.HORIZONTAL, from_=self.config.ranges['single_color_power_minx'],
+                                         bg=self.single_color_theme,
+                                         to_=self.config.ranges['single_color_power_max'],
+                                         resolution=self.config.ranges['single_color_power_resolution'],
+                                         length=200)
+        # self.singlecolorminscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormin,
+        #                                     orient=tk.HORIZONTAL, from_=SINGLECOLOR_VRANGE[0],
+        #                                     bg=self.single_color_theme,
+        #                                     to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
+        #
+        # self.singlecolormaxscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormax,
+        #                                     orient=tk.HORIZONTAL, from_=SINGLECOLOR_VRANGE[0],
+        #                                     bg=self.single_color_theme,
+        #                                     to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
 
-        self.singlecolormaxscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormax,
-                                            orient=tk.HORIZONTAL, from_=SINGLECOLOR_VRANGE[0],
-                                            bg=self.single_color_theme,
-                                            to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
-
-        self.singlecolorvar.set(DEFAULT_CHANNELS['single'])
-        self.singlecolorpower.set(DEFAULT_POWER['single'])
-        self.singlecolormin.set(DEFAULT_VMIN['single'])
-        self.singlecolormax.set(DEFAULT_VMAX['single'])
+        self.singlecolorvar.set(self.config.default['single'])
+        self.singlecolorpower.set(self.config.default['single_power'])
+        #self.singlecolormin.set(DEFAULT_VMIN['single'])
+        #self.singlecolormax.set(DEFAULT_VMAX['single'])
         self.singlecolordropdown.config(bg=self.single_color_theme, width=10)
         self.singlecolorlabel.pack(side=tk.LEFT)
         self.singlecolorscale.pack(side=tk.RIGHT)
@@ -436,25 +442,27 @@ class App(tk.Tk):
 
         self.multicolorscales = {color: tk.Scale(self.multicolorframes[color],
                                                  variable=self.multicolorpower[color],
-                                                 orient=tk.HORIZONTAL, from_=MULTICOLOR_RANGE[0],
-                                                 to_=MULTICOLOR_RANGE[1], bg=color,
-                                                 resolution=MULTICOLOR_RESOLUTION, length=200) for color in rgb}
-        self.multicolorminscale = {color: tk.Scale(self.multicolorframes[color],
-                                                   variable=self.multicolormin[color],
-                                                   orient=tk.HORIZONTAL, from_=MULTICOLOR_VRANGE[0],
-                                                   to_=MULTICOLOR_VRANGE[1], bg=color,
-                                                   resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
-        self.multicolormaxscale = {color: tk.Scale(self.multicolorframes[color],
-                                                   variable=self.multicolormax[color],
-                                                   orient=tk.HORIZONTAL, from_=MULTICOLOR_VRANGE[0],
-                                                   to_=MULTICOLOR_VRANGE[1], bg=color,
-                                                   resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
+                                                 orient=tk.HORIZONTAL,
+                                                 from_=self.config.ranges['multi_color_power_min'],
+                                                 to_=self.config.ranges['multi_color_power_max'], bg=color,
+                                                 resolution=self.config.ranges['multi_color_power_resolution'],
+                                                 length=200) for color in rgb}
+        # self.multicolorminscale = {color: tk.Scale(self.multicolorframes[color],
+        #                                            variable=self.multicolormin[color],
+        #                                            orient=tk.HORIZONTAL, from_=MULTICOLOR_VRANGE[0],
+        #                                            to_=MULTICOLOR_VRANGE[1], bg=color,
+        #                                            resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
+        # self.multicolormaxscale = {color: tk.Scale(self.multicolorframes[color],
+        #                                            variable=self.multicolormax[color],
+        #                                            orient=tk.HORIZONTAL, from_=MULTICOLOR_VRANGE[0],
+        #                                            to_=MULTICOLOR_VRANGE[1], bg=color,
+        #                                            resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
 
         for color in rgb:
-            self.multicolorvars[color].set(DEFAULT_CHANNELS[color])
-            self.multicolorpower[color].set(DEFAULT_POWER[color])
-            self.multicolormin[color].set(DEFAULT_VMIN[color])
-            self.multicolormax[color].set(DEFAULT_VMAX[color])
+            self.multicolorvars[color].set(self.config.default[color])
+            self.multicolorpower[color].set(self.config.default[color + "_power"])
+            # self.multicolormin[color].set(DEFAULT_VMIN[color])
+            # self.multicolormax[color].set(DEFAULT_VMAX[color])
             self.multicolordropdowns[color].config(bg=color, width=10)
             self.multicolorlabels[color].pack(side=tk.LEFT)
 
@@ -474,7 +482,7 @@ class App(tk.Tk):
 
     def change_class(self):
         ''' on changing the classification label, update the "draw" text '''
-        self.toolbarcenterframe.config(text="Draw: {}".format(SOLAR_CLASS_NAME[self.solar_class_var.get()]))
+        self.toolbarcenterframe.config(text="Draw: {}".format(self.config.solar_class_name[self.solar_class_var.get()]))
 
     def make_classify_tab(self):
         self.pick_frame = tk.Frame(self.tab_classify)
@@ -488,11 +496,11 @@ class App(tk.Tk):
         self.solar_class_var.set(0)  # initialize to unlabeled
         buttonnum = 0
         frame = [self.pick_frame, self.pick_frame2]
-        for text, value in SOLAR_CLASSES:
+        for text, value in self.config.solar_classes:
             b = tk.Radiobutton(frame[buttonnum % 2], text=text,
                                # b = tk.Radiobutton(frame[buttonnum%2].interior, text=text,
                                variable=self.solar_class_var,
-                               value=value, background=SOLAR_COLORS[text],
+                               value=value, background=self.config.solar_colors[text],
                                indicatoron=0, width=50, height=2, command=self.change_class)
             b.pack(fill=tk.BOTH, expand=1)
             buttonnum += 1
@@ -547,15 +555,15 @@ class App(tk.Tk):
 
     def draw_default(self):
         ''' Draw suggested sun disk, limb, and empty background '''
-        self.selection_array[:, :] = SOLAR_CLASS_INDEX['empty_outer_space']
+        self.selection_array[:, :] = self.config.solar_class_index['empty_outer_space']
         self.draw_annulus((self.cx, self.cy),
                           self.sun_radius_pixel - 5,
                           self.sun_radius_pixel + 15,
                           self.selection_array,
-                          SOLAR_CLASS_INDEX['limb'])
+                          self.config.solar_class_index['limb'])
         self.draw_circle((self.cx, self.cy),
                          self.sun_radius_pixel - 5,
                          self.selection_array,
-                         SOLAR_CLASS_INDEX['quiet_sun'])
+                         self.config.solar_class_index['quiet_sun'])
 
 
