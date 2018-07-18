@@ -390,7 +390,7 @@ class Outgest:
         date_fmt = '%Y-%m-%dT%H:%M:%S.%f'
         date_beg = self.start_time.strftime(date_fmt)
         date_end = self.end_time.strftime(date_fmt)
-        date_now = datetime.now().strftime(date_fmt)
+        date_now = datetime.utcnow().strftime(date_fmt)
         self.set_fits_header("TIMESYS", self.ref_hdr, pri_hdu)
         pri_hdu.header.append(("DATE-BEG", date_beg, "sun observation start time on sat"))
         pri_hdu.header.append(("DATE-END", date_end, "sun observation end time on sat"))
