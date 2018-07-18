@@ -7,28 +7,30 @@ class Config:
     def __init__(self, config_file_path):
         with open(config_file_path) as f:
             config = json.load(f)
-            print(config)
+
         self.products = config['train']['products']
+        self.products_map = {p: "c" + str(int(p.split("-")[-1][2:])) if p!= "halpha" else "halpha" for p in self.products}
         self.expert = config['train']['name']
         self.suvi_base_url = config['train']['suvi_url']
 
-        self.solar_classes = [(c, n) for c,n in config['classes'].items()]
-        self.solar_class_index = {c: n for c, n in config['classes'].items()}
-        self.solar_class_name = {n:c for c, n in config['classes'].items()}
+        self.solar_classes = [(c, int(n)) for c,n in config['classes'].items()]
+        print(self.solar_classes)
+        self.solar_class_index = {c: n for c, n in self.solar_classes}
+        self.solar_class_name = {n: c for c, n in config['classes'].items()}
         self.solar_colors = config['display']['colors']
         self.color_table = [self.solar_colors[self.solar_class_name[i]] if i in self.solar_class_name else 'black'
-                            for i in range(max(list(self.solar_class_index.keys())))]
+                            for i in range(max(list(self.solar_class_name.keys())))]
         self.solar_cmap = matplotlib.colors.ListedColormap(self.color_table)
 
         self.default = dict()
-        for k,v in config['default'].items():
+        for k,v in config['display']['default'].items():
             self.default[k] = v
 
         self.ranges = dict()
-        for k, v in config['ranges'].items():
+        for k, v in config['display']['ranges'].items():
             self.ranges[k] = v
 
-        self.boldfont = config['font']['bold']
+        self.boldfont = config['display']['font']['bold']
 
 
 # DELIMITER = '|'

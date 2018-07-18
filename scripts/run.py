@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 
 from dateutil import parser as dateparser
 
-from suvitrainer.config import *
 from suvitrainer.fileio import Fetcher
 from suvitrainer.gui import App
+from suvitrainer.config import Config
 
 
 def get_args():
@@ -21,6 +21,9 @@ def get_args():
     ap.add_argument("--date",
                     help="path to text file or URL with dates on each line alternatively it can be a single date",
                     default="https://raw.githubusercontent.com/jmbhughes/suvi-trainer/master/dates.txt")
+    ap.add_argument("--config",
+                    help="path to config file",
+                    default="config.json")
     return ap.parse_args()
 
 
@@ -48,6 +51,7 @@ def get_dates_link(url):
 
 if __name__ == "__main__":
     args = get_args()
+    config = Config(args.config)
     if args.verbose:
         print("Launching trainer")
 
@@ -78,10 +82,10 @@ if __name__ == "__main__":
     data, headers = dict(), dict()
     for product in results:
         head, d = results[product]
-        data[PRODUCTS_MAP[product]] = d
-        headers[PRODUCTS_MAP[product]] = head
+        data[config.products_map[product]] = d
+        headers[config.products_map[product]] = head
 
     # the output filenames are structured as the "thmap_[date of observation]_[date of labeling].fits"
     out_file_name = "thmap_{}_{}.fits".format(date.strftime("%Y%m%d%H%M%S"),
                                               datetime.now().strftime("%Y%m%d%H%M%S"))
-    App(data, out_file_name, None, None, headers).mainloop()
+    App(data, out_file_name, None, None, headers, args.config).mainloop()

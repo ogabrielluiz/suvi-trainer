@@ -106,9 +106,10 @@ class CustomToolbar(NavigationToolbar2TkAgg):
 class App(tk.Tk):
     def __init__(self, data, output, group, image_directory, headers, config_path,
                  blank=False, relabel=None, resizable=True):
+        self.config_path = config_path
         self.config = Config(config_path)
         self.history = []
-        self.header = headers[self.config['default']['header']]
+        self.header = headers[self.config.products_map[self.config.default['header']]]
         self.headers = headers
         self.interpret_header()
         self.group = group
@@ -161,7 +162,7 @@ class App(tk.Tk):
         self.sun_radius_pixel = (sun_radius_angular / arcsec_per_pixel)
 
     def save(self):
-        Outgest(self.output, self.selection_array.astype('uint8'), self.headers).save()
+        Outgest(self.output, self.selection_array.astype('uint8'), self.headers, self.config_path).save()
 
     def on_exit(self):
         """When you click to exit, this function is called"""
@@ -324,16 +325,16 @@ class App(tk.Tk):
             self.multicolorframes[color].config(bg='grey')
             self.multicolorlabels[color].config(bg='grey')
             self.multicolordropdowns[color].config(bg='grey', state=tk.DISABLED)
-            self.multicolorminscale[color].config(bg='grey', state=tk.DISABLED)
-            self.multicolormaxscale[color].config(bg='grey', state=tk.DISABLED)
+            #self.multicolorminscale[color].config(bg='grey', state=tk.DISABLED)
+            #self.multicolormaxscale[color].config(bg='grey', state=tk.DISABLED)
 
         # enable the single color
         self.singlecolorscale.config(state=tk.NORMAL, bg=self.single_color_theme)
         self.singlecolorframe.config(bg=self.single_color_theme)
         self.singlecolorlabel.config(bg=self.single_color_theme)
         self.singlecolordropdown.config(bg=self.single_color_theme, state=tk.NORMAL)
-        self.singlecolorminscale.config(bg=self.single_color_theme, state=tk.NORMAL)
-        self.singlecolormaxscale.config(bg=self.single_color_theme, state=tk.NORMAL)
+        #self.singlecolorminscale.config(bg=self.single_color_theme, state=tk.NORMAL)
+        #self.singlecolormaxscale.config(bg=self.single_color_theme, state=tk.NORMAL)
 
     def disable_singlecolor(self):
         ''' swap from the single color image to the multicolor image '''
@@ -343,16 +344,16 @@ class App(tk.Tk):
             self.multicolorframes[color].config(bg=color)
             self.multicolorlabels[color].config(bg=color)
             self.multicolordropdowns[color].config(bg=color, state=tk.NORMAL)
-            self.multicolorminscale[color].config(bg=color, state=tk.NORMAL)
-            self.multicolormaxscale[color].config(bg=color, state=tk.NORMAL)
+            #self.multicolorminscale[color].config(bg=color, state=tk.NORMAL)
+            #self.multicolormaxscale[color].config(bg=color, state=tk.NORMAL)
 
         # disable the singlecolor
         self.singlecolorscale.config(state=tk.DISABLED, bg='grey')
         self.singlecolorframe.config(bg='grey')
         self.singlecolorlabel.config(bg='grey')
         self.singlecolordropdown.config(bg='grey', state=tk.DISABLED)
-        self.singlecolorminscale.config(bg="grey", state=tk.DISABLED)
-        self.singlecolormaxscale.config(bg="grey", state=tk.DISABLED)
+        #self.singlecolorminscale.config(bg="grey", state=tk.DISABLED)
+        #self.singlecolormaxscale.config(bg="grey", state=tk.DISABLED)
 
     def update_button_action(self):
         if self.mode.get() == 3:  # threecolor
@@ -396,7 +397,7 @@ class App(tk.Tk):
         self.singlecolormax = tk.DoubleVar()
         self.singlecolordropdown = tk.OptionMenu(self.singlecolorframe, self.singlecolorvar, *channel_choices)
         self.singlecolorscale = tk.Scale(self.singlecolorframe, variable=self.singlecolorpower,
-                                         orient=tk.HORIZONTAL, from_=self.config.ranges['single_color_power_minx'],
+                                         orient=tk.HORIZONTAL, from_=self.config.ranges['single_color_power_min'],
                                          bg=self.single_color_theme,
                                          to_=self.config.ranges['single_color_power_max'],
                                          resolution=self.config.ranges['single_color_power_resolution'],
@@ -411,7 +412,7 @@ class App(tk.Tk):
         #                                     bg=self.single_color_theme,
         #                                     to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
 
-        self.singlecolorvar.set(self.config.default['single'])
+        self.singlecolorvar.set(self.config.products_map[self.config.default['single']])
         self.singlecolorpower.set(self.config.default['single_power'])
         #self.singlecolormin.set(DEFAULT_VMIN['single'])
         #self.singlecolormax.set(DEFAULT_VMAX['single'])
@@ -459,7 +460,7 @@ class App(tk.Tk):
         #                                            resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
 
         for color in rgb:
-            self.multicolorvars[color].set(self.config.default[color])
+            self.multicolorvars[color].set(self.config.products_map[self.config.default[color]])
             self.multicolorpower[color].set(self.config.default[color + "_power"])
             # self.multicolormin[color].set(DEFAULT_VMIN[color])
             # self.multicolormax[color].set(DEFAULT_VMAX[color])

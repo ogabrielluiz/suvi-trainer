@@ -345,7 +345,7 @@ class Outgest:
         self.config = Config(config_path)
         self.filename = filename
         self.thmap = thematic_map
-        self.ref_hdr = headers[self.config.default['header']]
+        self.ref_hdr = headers[self.config.products_map[self.config.default['header']]]
         self.start_time = date_parser.parse(self.ref_hdr['date-obs'])
         self.end_time = date_parser.parse(self.ref_hdr['date-obs'])
         for channel, header in headers.items():
