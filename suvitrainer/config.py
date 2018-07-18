@@ -1,6 +1,5 @@
 # from labeling gui
 import json
-
 import matplotlib
 
 

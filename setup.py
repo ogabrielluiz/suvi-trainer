@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-import glob
 
 setup(name='suvitrainer',
       version='0.0.1',
@@ -12,8 +11,7 @@ setup(name='suvitrainer',
       include_package_data=True,
       # test_suite='nose.collector',
       # tests_require=['nose'],
-      scripts=["scripts/easy_gui.py",
-               "scripts/run_gui.py"],
+      scripts=["scripts/run.py"],
       install_requires=['astropy',
                         'numpy',
                         'sunpy',
