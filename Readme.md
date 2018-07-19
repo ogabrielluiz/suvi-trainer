@@ -42,7 +42,9 @@ I will share the results of labeling with this tool using
 A [couple examples](examples/) are available here. 
 This labeled data is then used in [machine learning classification of solar images](https://github.com/jmbhughes/smachy). 
 
-![an example labeled image](examples/thmap_20180604002622_20180716083629.png)
+<p align="center">
+<img src="https://raw.githubusercontent.com/jmbhughes/suvi-trainer/master/examples/thmap_20180604002622_20180716083629.png" width="500">
+</p>
 
 ## Contributing
 
