@@ -69,10 +69,10 @@ def update_dates_priority(df,
             priority[date] = 1/(counted_dates[key] + 1)
         else:
             priority[date] = 1
-
     norm_factor = sum([pri for date, pri in priority.items()])
+    priority = sorted([(date, pri) for date, pri in priority.items()], key = lambda entry: entry[1])
     new_dates = "\n".join([date.strftime("%Y-%m-%dT%H:%M:%S") + " " + str(pri/norm_factor)
-                           for date, pri in priority.items()])
+                           for date, pri in priority])
     with open("dates.txt", 'w') as f:
         f.write(new_dates)
 
