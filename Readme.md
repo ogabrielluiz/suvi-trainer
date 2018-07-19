@@ -36,7 +36,9 @@ a large curated data-set with some repeats for validation.
 
 ## Data
 The output of training is saved as a FITS file which is later converted into a labeled png. 
-I will share the results of labeling with this tool using [Google Drive](https://drive.google.com/open?id=1QYdTTFDYs9Yg1g2zs7rxpj8znXCOwPeY). 
+I will share the results of labeling with this tool using 
+[Google Drive](https://drive.google.com/open?id=1QYdTTFDYs9Yg1g2zs7rxpj8znXCOwPeY) or as a
+ [zipped file](https://drive.google.com/open?id=1J0FGmoa_n37E0Ffzz5MDNDRvUntWWNPA).
 A [couple examples](examples/) are available here. 
 This labeled data is then used in [machine learning classification of solar images](https://github.com/jmbhughes/smachy). 
 
