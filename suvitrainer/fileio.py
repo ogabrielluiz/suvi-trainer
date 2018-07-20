@@ -59,6 +59,8 @@ class Fetcher:
         def fn_map(product):
             if product is 'halpha':
                 return self.fetch_halpha()
+            elif "aia" in product:
+                return self.fetch_aia(product)
             else:
                 return self.fetch_suvi(product)
 
@@ -79,6 +81,7 @@ class Fetcher:
 
         if verbose:
             print("Requesting halpha")
+
         def time_interval(time):
             """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
             return time - timedelta(minutes=3), time + timedelta(minutes=3)
@@ -111,6 +114,53 @@ class Fetcher:
             data[data < 0] = 0
 
         return "halpha",head, data
+
+
+    def fetch_aia(self, product, verbose=True, correct=True):
+        """
+        pull halpha from that time from Virtual Solar Observatory GONG archive
+        :param wavelength: wavelength of channel in angstroms
+        :param verbose: print help information as running
+        :param correct: remove nans and negatives
+        :return: "halpha" and then a fits header and data object for the GONG image at that time
+        TODO: what if no image is found?
+        """
+        from sunpy.net import vso
+        from astropy.units import Quantity
+        from skimage.transform import resize
+        from skimage.transform import AffineTransform, warp
+
+        if verbose:
+            print("Requesting aia")
+
+        wavelength = product.split("-")[1]
+        def time_interval(time):
+            """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
+            return time - timedelta(minutes=5), time + timedelta(minutes=5)
+
+        # setup the query for an halpha image and fetch, saving the image in the current directory
+        client = vso.VSOClient()
+        wave, source = Quantity(wavelength, "angstrom"), "aia"
+        query = client.search(vso.attrs.Time(*time_interval(self.date)),
+                              vso.attrs.Instrument(source),
+                              vso.attrs.Wavelength(wave))[0]
+
+        result = client.fetch([query], path="./").wait()
+
+        # open the image and remove the file
+        with fits.open(result[0]) as hdu:
+            hdu.verify('fix')
+            head = hdu[1].header
+            data = hdu[1].data
+        os.remove(result[0])
+
+        data, head = self.align_solar_fov(head, data, 2.5, 1280, rotate=False)
+        data = resize(data, (1280, 1280))
+        if correct:
+            data[np.isnan(data)] = 0
+            data[data < 0] = 0
+
+        return product, head, data
 
     def fetch_suvi(self, product, verbose=True, correct=True):
         """

@@ -57,7 +57,7 @@ if __name__ == "__main__":
         print("Running for {}".format(date))
 
     # Load data and organize input
-    f = Fetcher(date)
+    f = Fetcher(date, products=config.products)
     results = f.fetch()
 
     data, headers = dict(), dict()
