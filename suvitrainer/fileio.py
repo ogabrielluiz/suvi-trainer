@@ -57,7 +57,8 @@ class Fetcher:
         pool = ThreadPool()
 
         def fn_map(product):
-            if product is 'halpha':
+            print(product, "halpha" in product)
+            if "halpha" in product:
                 return self.fetch_halpha()
             elif "aia" in product:
                 return self.fetch_aia(product)

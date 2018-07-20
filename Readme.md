@@ -17,6 +17,7 @@ After [creating a separate virtual environment](https://realpython.com/python-vi
 ```
 python3 setup.py install
 ```
+(There is also a stable version that can be installed from PyPi using `pip3 install suvitrainer`)
 You will need to edit the [configuration file](config_example.json) to include your name and the upload password. Please 
 [contact me](mailto:hughes.jmb@gmail.com) for the password and further information. 
 

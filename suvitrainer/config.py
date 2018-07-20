@@ -16,7 +16,7 @@ class Config:
             elif "halpha" in product:
                 self.products_map["halpha"] = "halpha"
             else:
-                self.products_map[product] = "c" + str(int(p.split("-")[-1][2:]))
+                self.products_map[product] = "c" + str(int(product.split("-")[-1][2:]))
         #self.products_map = {p: "c" + str(int(p.split("-")[-1][2:])) if p!= "halpha" else "halpha" for p in self.products}
 
         if 'upload' in config['train']:
