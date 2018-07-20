@@ -131,7 +131,7 @@ class Fetcher:
         from skimage.transform import AffineTransform, warp
 
         if verbose:
-            print("Requesting aia")
+            print("Requesting {}".format(product))
 
         wavelength = product.split("-")[1]
         def time_interval(time):
@@ -156,6 +156,12 @@ class Fetcher:
 
         data, head = self.align_solar_fov(head, data, 2.5, 1280, rotate=False)
         data = resize(data, (1280, 1280))
+        head['NAXIS1'] = 1280
+        head['NAXIS2'] = 1280
+        head['CRPIX1'] = 640
+        head['CRPIX2'] = 640
+        head['CDELT1'] = 2.5
+        head['CDELT2'] = 2.5
         if correct:
             data[np.isnan(data)] = 0
             data[data < 0] = 0
@@ -436,8 +442,11 @@ class Outgest:
         except ValueError:
            print('Invalid FITS header keyword: %s --> omitting from file' % hdr_key)
         else:
-            card = hdr_src.cards[card_ind]
-            hdu.header.append((card.keyword, card.value, card.comment))
+            try:
+                card = hdr_src.cards[card_ind]
+                hdu.header.append((card.keyword, card.value, card.comment))
+            except:
+                pass
 
     def upload(self):
         if self.config.upload:
@@ -498,40 +507,42 @@ class Outgest:
         # File Provenance
         pri_hdu.header.append(("TITLE", "Expert Labeled Thematic Map Image", "image title"))
         pri_hdu.header.append(("MAP_MTHD", "human", "thematic map classifier method"))
-
-        # Add COMMENT cards
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 1,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 2, ("COMMENT", 'USING SUVI THEMATIC MAP FILES'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 3,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 4,
-                              ("COMMENT", 'Map labels are described in the FITS extension.'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 5, ("COMMENT", 'Example:'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 6, ("COMMENT", 'from astropy.io import fits as pyfits'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 7, ("COMMENT", 'img = pyfits.open(<filename>)'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 8, ("COMMENT", 'map_labels = img[1].data'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 9,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 10, ("COMMENT", 'TEMPORAL INFORMATION'))
-        pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 11,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("DATE") + 1,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("DATE") + 2,
-                              ("COMMENT", 'INSTRUMENT & SPACECRAFT STATE DURING OBSERVATION'))
-        pri_hdu.header.insert(pri_hdu.header.index("DATE") + 3,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 1,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 2, ("COMMENT", 'POINTING & PROJECTION'))
-        pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 3,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 1,
-                              ("COMMENT", '------------------------------------------------------------------------'))
-        pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 2, ("COMMENT", 'FILE PROVENANCE'))
-        pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 3,
-                              ("COMMENT", '------------------------------------------------------------------------'))
+        try:
+            # Add COMMENT cards
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 1,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 2, ("COMMENT", 'USING SUVI THEMATIC MAP FILES'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 3,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 4,
+                                  ("COMMENT", 'Map labels are described in the FITS extension.'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 5, ("COMMENT", 'Example:'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 6, ("COMMENT", 'from astropy.io import fits as pyfits'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 7, ("COMMENT", 'img = pyfits.open(<filename>)'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 8, ("COMMENT", 'map_labels = img[1].data'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 9,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 10, ("COMMENT", 'TEMPORAL INFORMATION'))
+            pri_hdu.header.insert(pri_hdu.header.index("TITLE") + 11,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("DATE") + 1,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("DATE") + 2,
+                                  ("COMMENT", 'INSTRUMENT & SPACECRAFT STATE DURING OBSERVATION'))
+            pri_hdu.header.insert(pri_hdu.header.index("DATE") + 3,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 1,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 2, ("COMMENT", 'POINTING & PROJECTION'))
+            pri_hdu.header.insert(pri_hdu.header.index("ECLIPSE") + 3,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 1,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+            pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 2, ("COMMENT", 'FILE PROVENANCE'))
+            pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 3,
+                                  ("COMMENT", '------------------------------------------------------------------------'))
+        except:
+            pass
 
         # Thematic map feature list (Secondary HDU extension)
         map_val = []

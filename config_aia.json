@@ -1,0 +1,63 @@
+{
+  "train":{
+    "name":"marcushughes",
+    "upload":true,
+    "upload_password" : "thankYOU_suvi2018",
+    "suvi_url":"https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/",
+    "products": ["aia-171", "aia-193", "aia-304"]
+  },
+
+  "classes":{
+    "unlabeled":0,
+    "empty_outer_space":1,
+    "structured_outer_space":2,
+    "bright_region":3,
+    "filament":4,
+    "prominence":5,
+    "coronal_hole":6,
+    "quiet_sun":7,
+    "limb":8,
+    "flare":9
+  },
+
+  "display":{
+    "colors":{
+      "unlabeled":"white",
+      "empty_outer_space": "#191970",
+      "structured_outer_space": "#8b7b8b",
+      "bright_region": "yellow",
+      "filament": "#FF3E96",
+      "prominence": "#FF69B4",
+      "coronal_hole": "#0085b2",
+      "quiet_sun": "#006400",
+      "limb": "#8FBC8F",
+      "flare": "#ffdb99"
+    },
+
+    "default":{
+      "red": "aia-171",
+      "green": "aia-193",
+      "blue": "aia-304",
+      "single":"aia-304",
+      "red_power": 0.26,
+      "green_power": 0.29,
+      "blue_power": 0.26,
+      "single_power": 2.0,
+      "header":"aia-193"
+    },
+
+    "ranges":{
+      "single_color_power_min":0.25,
+      "single_color_power_max":2.5,
+      "single_color_power_resolution":0.01,
+
+      "multi_color_power_min": 0.01,
+      "multi_color_power_max":1.0,
+      "multi_color_power_resolution":0.01
+    },
+
+    "font": {
+      "bold": "Helvetica 18 bold"
+    }
+  }
+}
