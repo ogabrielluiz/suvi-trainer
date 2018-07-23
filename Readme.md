@@ -35,6 +35,11 @@ strings where each one is on a different line, or a url to an online list of dat
 The default is to pull using the url for [dates.txt](dates.txt) stored in this repository. This is preferred to create
 a large curated data-set with some repeats for validation. 
 
+The list of options for input images:
+- `halpha` (from GONG)
+- any of the AIA EUV channels listed as `aia-[WAVELENGTH]` with the wavelength in angstroms, e.g. `aia-131`
+- any of the SUVI EUV L1B channels listed as products, e.g. `suvi-l1b-fe131` 
+(see the [FTP site](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/) for a list)
 ## Data
 The output of training is saved as a FITS file which is later converted into a labeled png. 
 I will share the results of labeling with this tool using 
