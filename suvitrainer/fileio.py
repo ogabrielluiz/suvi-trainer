@@ -57,7 +57,6 @@ class Fetcher:
         pool = ThreadPool()
 
         def fn_map(product):
-            print(product, "halpha" in product)
             if "halpha" in product:
                 return self.fetch_halpha()
             elif "aia" in product:
@@ -137,15 +136,18 @@ class Fetcher:
         wavelength = product.split("-")[1]
         def time_interval(time):
             """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
-            return time - timedelta(minutes=5), time + timedelta(minutes=5)
+            return time - timedelta(minutes=15), time + timedelta(minutes=15)
 
         # setup the query for an halpha image and fetch, saving the image in the current directory
         client = vso.VSOClient()
         wave, source = Quantity(wavelength, "angstrom"), "aia"
         query = client.search(vso.attrs.Time(*time_interval(self.date)),
                               vso.attrs.Instrument(source),
-                              vso.attrs.Wavelength(wave))[0]
+                              vso.attrs.Wavelength(wave))
+        if verbose:
+            print("Query length for {} is {}".format(product, len(query)))
 
+        query = query[0]
         result = client.fetch([query], path="./").wait()
 
         # open the image and remove the file
