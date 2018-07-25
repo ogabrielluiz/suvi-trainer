@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='suvitrainer',
-      version='0.0.4',
+      version='1.0.0',
       description='Training tool for SUVI thematic map machine learning',
       url='https://github.com/jmbhughes/suvitrainer',
       author='J. Marcus Hughes',

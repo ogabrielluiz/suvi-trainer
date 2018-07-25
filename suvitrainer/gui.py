@@ -22,8 +22,6 @@ import numpy as np
 
 import scipy.ndimage
 
-# matplotlib.use("TkAgg")
-
 
 class VerticalScrolledFrame(Frame):
     """
