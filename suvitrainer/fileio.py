@@ -1,4 +1,5 @@
 import os
+import sys
 import ftplib
 import re
 import urllib.request
@@ -40,7 +41,8 @@ class Fetcher:
 
     def __init__(self, date,
                  products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171", "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
-                 suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/"):
+                 suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/",
+                 verbose=True):
         """
         :param date: a date object the indicates when the observation is from
         :param suvi_base_url: the url to the top level goes-16 data page
@@ -49,6 +51,7 @@ class Fetcher:
         self.date = date
         self.suvi_base_url = suvi_base_url
         self.products = products
+        self.verbose = verbose
 
     def fetch(self):
         """
@@ -65,9 +68,14 @@ class Fetcher:
                 return self.fetch_suvi(product)
 
         results = pool.map(fn_map, self.products)
-        return {product:(head, data) for product, head, data in results}
+        results = {product: (head, data) for product, head, data in results}
+        for product, (head, data) in results.items():
+            if data is None:
+                sys.exit("The {} channel was empty. Please try again.".format(product) +
+                         "Sometimes a second reload or a different date is needed")
+        return results
 
-    def fetch_halpha(self, verbose=True, correct=True):
+    def fetch_halpha(self, correct=True):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
         :param verbose: print help information as running
@@ -79,7 +87,7 @@ class Fetcher:
         from astropy.units import Quantity
         from skimage.transform import AffineTransform, warp
 
-        if verbose:
+        if self.verbose:
             print("Requesting halpha")
 
         def time_interval(time):
@@ -93,7 +101,7 @@ class Fetcher:
                              vso.attrs.Source(source),
                              vso.attrs.Wavelength(halpha))[0]
 
-        result = client.fetch([query], path="./").wait()
+        result = client.fetch([query], path="./").wait(progress=False)
 
         # open the image and remove the file
         with fits.open(result[0]) as hdu:
@@ -115,8 +123,7 @@ class Fetcher:
 
         return "halpha",head, data
 
-
-    def fetch_aia(self, product, verbose=True, correct=True):
+    def fetch_aia(self, product, correct=True):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
         :param wavelength: wavelength of channel in angstroms
@@ -128,9 +135,8 @@ class Fetcher:
         from sunpy.net import vso
         from astropy.units import Quantity
         from skimage.transform import resize
-        from skimage.transform import AffineTransform, warp
 
-        if verbose:
+        if self.verbose:
             print("Requesting {}".format(product))
 
         wavelength = product.split("-")[1]
@@ -144,11 +150,11 @@ class Fetcher:
         query = client.search(vso.attrs.Time(*time_interval(self.date)),
                               vso.attrs.Instrument(source),
                               vso.attrs.Wavelength(wave))
-        if verbose:
+        if self.verbose:
             print("Query length for {} is {}".format(product, len(query)))
 
         query = query[0]
-        result = client.fetch([query], path="./").wait()
+        result = client.fetch([query], path="./").wait(progress=False)
 
         # open the image and remove the file
         with fits.open(result[0]) as hdu:
@@ -171,15 +177,19 @@ class Fetcher:
 
         return product, head, data
 
-    def fetch_suvi(self, product, verbose=True, correct=True):
+    def fetch_suvi(self, product, correct=True):
         """
         Given a product keyword, downloads the image into the current directory.
         :param product: the keyword for the product, e.g. suvi-l1b-fe094
         :param verbose: print information as running
         :param correct: remove nans and negatives
         """
+        if self.date < datetime(2018, 5, 23):
+            print("SUVI data is only available after 2018-5-23")
+            return product, None, None
+
         url = self.suvi_base_url + product + "/{}/{:02d}/{:02d}".format(self.date.year, self.date.month, self.date.day)
-        if verbose:
+        if self.verbose:
             print("Requesting from {}".format(url))
 
         req = urllib.request.Request(url)

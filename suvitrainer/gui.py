@@ -424,7 +424,7 @@ class App(tk.Tk):
             path = np.array(path)
 
             clips = []
-            while not_finished:
+            while len(coords) > 5:
                 dist = np.sum(np.abs(path[-1] - coords), axis=1)
                 neighbor_index = np.argmin(dist)
                 clip = [coords[neighbor_index].copy()]

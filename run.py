@@ -2,7 +2,7 @@
 
 import argparse
 import os
-import random
+import time
 import sys
 import urllib.request
 from datetime import datetime, timedelta
@@ -14,6 +14,8 @@ from suvitrainer.gui import App
 from suvitrainer.config import Config
 
 import numpy as np
+
+import warnings
 
 
 def get_args():
@@ -30,6 +32,9 @@ def get_args():
 
 
 if __name__ == "__main__":
+    warnings.filterwarnings("ignore")
+    t0 = time.time()
+
     args = get_args()
     config = Config(args.config)
     if args.verbose:
@@ -57,7 +62,7 @@ if __name__ == "__main__":
         print("Running for {}".format(date))
 
     # Load data and organize input
-    f = Fetcher(date, products=config.products)
+    f = Fetcher(date, products=config.products, verbose=args.verbose)
     results = f.fetch()
 
     data, headers = dict(), dict()
@@ -70,3 +75,6 @@ if __name__ == "__main__":
     out_file_name = "thmap_{}_{}.fits".format(date.strftime("%Y%m%d%H%M%S"),
                                               datetime.utcnow().strftime("%Y%m%d%H%M%S"))
     App(data, out_file_name, headers, args.config).mainloop()
+
+    if args.verbose:
+        print("Training took {:.1f} minutes".format((time.time() - t0)/60.0))
