@@ -41,9 +41,9 @@ if __name__ == "__main__":
     else:  # not a local file so it's either a website or a date
         try:  # it's a link
             dates = get_dates_link(args.date)
-        except:# (ValueError, urllib.error.URLError) as e:
+        except (ValueError, urllib.error.URLError) as e:
             try:
-                dates = [dateparser.parse(args.date)]
+                dates = [(dateparser.parse(args.date), 1)]
             except:
                 sys.exit("The date you specified is in valid. " +
                          "It must be a link to a dates file, a path to a local dates file, or a date. " +
