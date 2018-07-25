@@ -12,6 +12,11 @@ from astropy.io import fits
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 from suvitrainer.config import Config
+from skimage.transform import resize
+
+from sunpy.net import vso
+from astropy.units import Quantity
+from skimage.transform import AffineTransform, warp
 
 
 def convert_time_string(date_str):
@@ -40,7 +45,8 @@ class Fetcher:
     """ retrieves channel images for a specific time """
 
     def __init__(self, date,
-                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171", "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
+                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
+                           "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
                  suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/",
                  verbose=True):
         """
@@ -81,11 +87,7 @@ class Fetcher:
         :param verbose: print help information as running
         :param correct: remove nans and negatives
         :return: "halpha" and then a fits header and data object for the GONG image at that time
-        TODO: what if no image is found?
         """
-        from sunpy.net import vso
-        from astropy.units import Quantity
-        from skimage.transform import AffineTransform, warp
 
         if self.verbose:
             print("Requesting halpha")
@@ -130,11 +132,7 @@ class Fetcher:
         :param verbose: print help information as running
         :param correct: remove nans and negatives
         :return: "halpha" and then a fits header and data object for the GONG image at that time
-        TODO: what if no image is found?
         """
-        from sunpy.net import vso
-        from astropy.units import Quantity
-        from skimage.transform import resize
 
         if self.verbose:
             print("Requesting {}".format(product))
