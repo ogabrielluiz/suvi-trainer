@@ -20,4 +20,5 @@ setup(name='suvitrainer',
                         'bs4',
                         'requests',
                         'suds-jurko',
-                        'drms'])
+                        'drms',
+                        "scipy"])

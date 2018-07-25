@@ -3,18 +3,27 @@ from tkinter import *  # bad idea... but I did it
 from tkinter import messagebox, ttk
 
 import matplotlib.pyplot as plt
-import numpy as np
 import matplotlib
 from matplotlib import path
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.widgets import LassoSelector
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+
 from skimage import draw
+from skimage.morphology import binary_erosion
+
 from sunpy import sun, time
 
 from suvitrainer.fileio import Outgest
 from suvitrainer.config import Config
 
-matplotlib.use("TkAgg")
+import numpy as np
+
+import scipy.ndimage
+from scipy.spatial import ConvexHull
+
+#matplotlib.use("TkAgg")
 
 
 class VerticalScrolledFrame(Frame):
@@ -116,6 +125,8 @@ class App(tk.Tk):
         self.image_directory = image_directory
         self.blank = blank
         self.relabel = relabel
+
+        self.region_patches = []
 
         tk.Tk.__init__(self)
         self.assign_defaults()  # setup the graphical defaults as desired
@@ -255,6 +266,9 @@ class App(tk.Tk):
                                                                 sharex=True, sharey=True,
                                                                 gridspec_kw=self.subplot_grid_spec)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.canvas_frame)
+        cid = self.canvas.mpl_connect('button_press_event', self.onclick)
+        self.canvas.mpl_connect('key_press_event', self.onpress)
+
         self.imageax.plot()  # TODO is this really needed?
         self.configure_threecolor_image()
         self.imageplot = self.imageax.imshow(self.image)
@@ -307,6 +321,95 @@ class App(tk.Tk):
         self.fig.canvas.toolbar.set_message = lambda x: ""  # remove state reporting
         toolbarframe.pack()
         self.toolbarcenterframe.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def onpress(self, event):
+        """
+        Reacts to key commands
+        :param event: a keyboard event
+        :return: if 'c' is pressed, clear all region patches
+        """
+        if event.key == 'c':
+            for patch in self.region_patches:
+                patch.remove()
+            self.region_patches = []
+            self.fig.canvas.draw_idle()
+
+    def onclick(self, event):
+        """
+        Draw contours on the data for a click in the thematic map
+        :param event: mouse click on thematic map preview
+        """
+        if event.inaxes == self.previewax:
+            y, x = int(event.xdata), int(event.ydata)
+            label = self.selection_array[x, y]
+            contiguous_regions = scipy.ndimage.label(self.selection_array == label)[0]
+            this_region = contiguous_regions == (contiguous_regions[x, y])
+
+            # remove the boundaries so any region touching the edge isn't drawn odd
+            this_region[0, :] = 0
+            this_region[:, 0] = 0
+            this_region[this_region.shape[0]-1, :] = 0
+            this_region[:, this_region.shape[1]-1] = 0
+
+            # convert the region mask into just a true/false array of its boundary pixels
+            edges = binary_erosion(this_region) ^ this_region
+
+            # convert the boundary pixels into a path, moving around instead of just where
+            x, y = np.where(edges)
+            coords = np.dstack([x, y])[0]
+            path = [coords[0]]
+            coords = coords[1:]
+            not_finished = True
+            while not_finished:  # and steps < 5:
+                dist = np.sum(np.abs(path[-1] - coords), axis=1)
+
+                # neighbor_index = np.where(dist == 1)[0][0]
+                neighbor_index = np.argmin(dist)
+
+                if dist[neighbor_index] < 5:
+
+
+                    path.append(coords[neighbor_index].copy())
+                    coords[neighbor_index:-1] = coords[neighbor_index + 1:];
+                    coords = coords[:-1]
+                    not_finished = len(coords) != 0
+                else:
+                    break
+
+            #path.append(path[0].copy())
+            path = np.array(path)
+
+            clips = []
+            while not_finished:
+                dist = np.sum(np.abs(path[-1] - coords), axis=1)
+                neighbor_index = np.argmin(dist)
+                clip = [coords[neighbor_index].copy()]
+                coords[neighbor_index:-1] = coords[neighbor_index + 1:]; coords = coords[:-1]
+                while not_finished:
+                    dist = np.sum(np.abs(clip[-1] - coords), axis=1)
+                    # neighbor_index = np.where(dist == 1)[0][0]
+                    neighbor_index = np.argmin(dist)
+                    if dist[neighbor_index] < 5:
+                        # print(coords[neighbor_index], dist[neighbor_index])
+                        clip.append(coords[neighbor_index].copy())
+                        coords[neighbor_index:-1] = coords[neighbor_index + 1:];
+                        coords = coords[:-1]
+                        not_finished = len(coords) != 0
+                    else:
+                        break
+                clips.append(np.array(clip))
+
+            self.region_patches.append(PatchCollection(
+                [Polygon(np.dstack([path[:, 1], path[:, 0]])[0], False,
+                         fill=False, facecolor=None,
+                         edgecolor="black", alpha=1, lw=2.5)] +
+                [Polygon(np.dstack([clip[:, 1], clip[:, 0]])[0], False,
+                         fill=False, facecolor=None,
+                         edgecolor="black", alpha=1, lw=2.0) for clip in clips],
+                match_original=True))
+            #self.imageax.add_patch(self.region_patches[-1])
+            self.imageax.add_collection(self.region_patches[-1])
+            self.fig.canvas.draw_idle()
 
     def make_options_frame(self):
         self.tab_frame = ttk.Notebook(self.option_frame, width=800)
@@ -536,18 +639,50 @@ class App(tk.Tk):
         # self.confidence_frame.pack(side=tk.RIGHT)#grid(row=0, column=1)
 
     def draw_circle(self, center, radius, array, value, mode="set"):
+        """
+        Draws a circle of specified radius on the input array and fills it with specified value
+        :param center: a tuple for the center of the circle
+        :type center: tuple (x,y)
+        :param radius: how many pixels in radius the circle is
+        :type radius: int
+        :param array: image to draw circle on
+        :type array: size (m,n) numpy array
+        :param value: what value to fill the circle with
+        :type value: float
+        :param mode: if "set" will assign the circle interior value, if "add" will add the value to the circle interior,
+            throws exception otherwise
+        :type mode: string, either "set" or "add"
+        :return: updates input array
+        """
         ri, ci = draw.circle(center[0], center[1],
                              radius=radius,
                              shape=array.shape)
-
-        existing = array[ri, ci]
         if mode == "add":
             array[ri, ci] += value
         elif mode == "set":
             array[ri, ci] = value
-        return ri, ci, existing
+        else:
+            raise ValueError("draw_circle mode must be 'set' or 'add' but {} used".format(mode))
+        return ri, ci, array[ri,ci]
 
     def draw_annulus(self, center, inner_radius, outer_radius, array, value, mode="set"):
+        """
+        Draws an annulus of specified radius on the input array and fills it with specified value
+        :param center: a tuple for the center of the annulus
+        :type center: tuple (x,y)
+        :param inner_radius: how many pixels in radius the interior empty circle is, where the annulus begins
+        :type inner_radius: int
+        :param outer_radius: how many pixels in radius the larger outer circle is, where the annulus ends
+        :typde outer_radius: int
+        :param array: image to draw annulus on
+        :type array: size (m,n) numpy array
+        :param value: what value to fill the annulus with
+        :type value: float
+        :param mode: if "set" will assign the circle interior value, if "add" will add the value to the circle interior,
+            throws exception otherwise
+        :type mode: string, either "set" or "add"
+        :return: updates input array and then returns it with the annulus coordinates as a tuple
+        """
         if mode == "add":
             self.draw_circle(center, outer_radius, array, value)
             self.draw_circle(center, inner_radius, array, -value)
@@ -555,17 +690,29 @@ class App(tk.Tk):
             ri, ci, existing = self.draw_circle(center, inner_radius, array, -value)
             self.draw_circle(center, outer_radius, array, value)
             array[ri, ci] = existing
+        else:
+            raise ValueError("draw_annulus mode must be 'set' or 'add' but {} used".format(mode))
 
-    def draw_default(self):
-        ''' Draw suggested sun disk, limb, and empty background '''
+    def draw_default(self, inside=5, outside=15):
+        """
+        Draw suggested sun disk, limb, and empty background
+        :param inside: how many pixels from the calculated solar disk edge to go inward for the limb
+        :param outside: how many pixels from the calculated solar disk edge to go outward for the limb
+        :return: updates the self.selection_array
+        """
+        # fill everything with empty outer space
         self.selection_array[:, :] = self.config.solar_class_index['empty_outer_space']
+
+        # draw the limb label in its location
         self.draw_annulus((self.cx, self.cy),
-                          self.sun_radius_pixel - 5,
-                          self.sun_radius_pixel + 15,
+                          self.sun_radius_pixel - inside,
+                          self.sun_radius_pixel + outside,
                           self.selection_array,
                           self.config.solar_class_index['limb'])
+
+        # draw quiet sun in its location
         self.draw_circle((self.cx, self.cy),
-                         self.sun_radius_pixel - 5,
+                         self.sun_radius_pixel - inside,
                          self.selection_array,
                          self.config.solar_class_index['quiet_sun'])
 
