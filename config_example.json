@@ -8,7 +8,7 @@
       "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"]
   },
 
-  "classes":{
+"classes":{
     "unlabeled":0,
     "empty_outer_space":1,
     "structured_outer_space":2,
@@ -44,7 +44,9 @@
       "green_power": 0.29,
       "blue_power": 0.26,
       "single_power": 2.0,
-      "header":"suvi-l1b-fe195"
+      "header":"suvi-l1b-fe195",
+      "lasso_color": "red",
+      "lasso_width": 2
     },
 
     "ranges":{
@@ -54,7 +56,15 @@
 
       "multi_color_power_min": 0.01,
       "multi_color_power_max":1.0,
-      "multi_color_power_resolution":0.01
+      "multi_color_power_resolution":0.01,
+
+      "single_color_vmin":15,
+      "single_color_vmax":85,
+      "single_color_vresolution":0.1,
+
+      "multi_color_vmin":15,
+      "multi_color_vmax":85,
+      "multi_color_vresolution":0.1
     },
 
     "font": {
