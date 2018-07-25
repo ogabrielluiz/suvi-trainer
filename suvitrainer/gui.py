@@ -217,11 +217,17 @@ class App(tk.Tk):
             self.image[:, :, order[color]] = self.data[channel]
             self.image[:, :, order[color]] = np.power(self.image[:, :, order[color]],
                                                       self.multicolorpower[color].get())
-            if scale:
-                lower_limit = np.nanpercentile(self.image[:, :, order[color]], 1)
-                upper_limit = np.nanpercentile(self.image[:, :, order[color]], 99)
-                self.image[np.where(self.image[:, :, order[color]] < lower_limit)] = lower_limit
-                self.image[np.where(self.image[:, :, order[color]] > upper_limit)] = upper_limit
+
+            lower = np.nanpercentile(self.image[:, :, order[color]], self.multicolormin[color].get())
+            upper = np.nanpercentile(self.image[:, :, order[color]], self.multicolormax[color].get())
+            self.image[np.where(self.image[:, :, order[color]] < lower)] = lower
+            self.image[np.where(self.image[:, :, order[color]] > upper)] = upper
+
+            # if scale:
+            #     lower_limit = np.nanpercentile(self.image[:, :, order[color]], 1)
+            #     upper_limit = np.nanpercentile(self.image[:, :, order[color]], 99)
+            #     self.image[np.where(self.image[:, :, order[color]] < lower_limit)] = lower_limit
+            #     self.image[np.where(self.image[:, :, order[color]] > upper_limit)] = upper_limit
 
         for color, index in order.items():
             self.image[:, :, index] /= np.nanmax(self.image[:, :, index])
@@ -230,12 +236,16 @@ class App(tk.Tk):
         ''' configures the three color image according to the requested parameters '''
         self.image = self.data[self.singlecolorvar.get()]
         self.image = np.power(self.image, self.singlecolorpower.get())
+        lower = np.nanpercentile(self.image, self.singlecolormin.get())
+        upper = np.nanpercentile(self.image, self.singlecolormax.get())
+        self.image[self.image < lower] = lower
+        self.image[self.image > upper] = upper
 
-        if scale:
-            lower_limit = np.nanpercentile(self.image, 1)
-            upper_limit = np.nanpercentile(self.image, 99)
-            self.image[np.where(self.image < lower_limit)] = lower_limit
-            self.image[np.where(self.image > upper_limit)] = upper_limit
+        # if scale:
+        #     lower_limit = np.nanpercentile(self.image, 1)
+        #     upper_limit = np.nanpercentile(self.image, 99)
+        #     self.image[np.where(self.image < lower_limit)] = lower_limit
+        #     self.image[np.where(self.image > upper_limit)] = upper_limit
 
         self.image /= np.nanmax(self.image)
 
@@ -430,16 +440,16 @@ class App(tk.Tk):
             self.multicolorframes[color].config(bg='grey')
             self.multicolorlabels[color].config(bg='grey')
             self.multicolordropdowns[color].config(bg='grey', state=tk.DISABLED)
-            #self.multicolorminscale[color].config(bg='grey', state=tk.DISABLED)
-            #self.multicolormaxscale[color].config(bg='grey', state=tk.DISABLED)
+            self.multicolorminscale[color].config(bg='grey', state=tk.DISABLED)
+            self.multicolormaxscale[color].config(bg='grey', state=tk.DISABLED)
 
         # enable the single color
         self.singlecolorscale.config(state=tk.NORMAL, bg=self.single_color_theme)
         self.singlecolorframe.config(bg=self.single_color_theme)
         self.singlecolorlabel.config(bg=self.single_color_theme)
         self.singlecolordropdown.config(bg=self.single_color_theme, state=tk.NORMAL)
-        #self.singlecolorminscale.config(bg=self.single_color_theme, state=tk.NORMAL)
-        #self.singlecolormaxscale.config(bg=self.single_color_theme, state=tk.NORMAL)
+        self.singlecolorminscale.config(bg=self.single_color_theme, state=tk.NORMAL)
+        self.singlecolormaxscale.config(bg=self.single_color_theme, state=tk.NORMAL)
 
     def disable_singlecolor(self):
         ''' swap from the single color image to the multicolor image '''
@@ -449,16 +459,16 @@ class App(tk.Tk):
             self.multicolorframes[color].config(bg=color)
             self.multicolorlabels[color].config(bg=color)
             self.multicolordropdowns[color].config(bg=color, state=tk.NORMAL)
-            #self.multicolorminscale[color].config(bg=color, state=tk.NORMAL)
-            #self.multicolormaxscale[color].config(bg=color, state=tk.NORMAL)
+            self.multicolorminscale[color].config(bg=color, state=tk.NORMAL)
+            self.multicolormaxscale[color].config(bg=color, state=tk.NORMAL)
 
         # disable the singlecolor
         self.singlecolorscale.config(state=tk.DISABLED, bg='grey')
         self.singlecolorframe.config(bg='grey')
         self.singlecolorlabel.config(bg='grey')
         self.singlecolordropdown.config(bg='grey', state=tk.DISABLED)
-        #self.singlecolorminscale.config(bg="grey", state=tk.DISABLED)
-        #self.singlecolormaxscale.config(bg="grey", state=tk.DISABLED)
+        self.singlecolorminscale.config(bg="grey", state=tk.DISABLED)
+        self.singlecolormaxscale.config(bg="grey", state=tk.DISABLED)
 
     def update_button_action(self):
         if self.mode.get() == 3:  # threecolor
@@ -507,25 +517,29 @@ class App(tk.Tk):
                                          to_=self.config.ranges['single_color_power_max'],
                                          resolution=self.config.ranges['single_color_power_resolution'],
                                          length=200)
-        # self.singlecolorminscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormin,
-        #                                     orient=tk.HORIZONTAL, from_=SINGLECOLOR_VRANGE[0],
-        #                                     bg=self.single_color_theme,
-        #                                     to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
-        #
-        # self.singlecolormaxscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormax,
-        #                                     orient=tk.HORIZONTAL, from_=SINGLECOLOR_VRANGE[0],
-        #                                     bg=self.single_color_theme,
-        #                                     to_=SINGLECOLOR_VRANGE[1], resolution=SINGLECOLOR_VRESOLUTION, length=200)
+        self.singlecolorminscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormin,
+                                            orient=tk.HORIZONTAL, from_=0,
+                                            bg=self.single_color_theme,
+                                            to_=self.config.ranges['single_color_vmin'],
+                                            resolution=self.config.ranges['single_color_vresolution'], length=200)
+
+        self.singlecolormaxscale = tk.Scale(self.singlecolorframe, variable=self.singlecolormax,
+                                            orient=tk.HORIZONTAL, from_=self.config.ranges['single_color_vmax'],
+                                            bg=self.single_color_theme,
+                                            to_=100, resolution=self.config.ranges['single_color_vresolution'],
+                                            length=200)
 
         self.singlecolorvar.set(self.config.products_map[self.config.default['single']])
         self.singlecolorpower.set(self.config.default['single_power'])
+        self.singlecolormin.set(0)
+        self.singlecolormax.set(100)
         #self.singlecolormin.set(DEFAULT_VMIN['single'])
         #self.singlecolormax.set(DEFAULT_VMAX['single'])
         self.singlecolordropdown.config(bg=self.single_color_theme, width=10)
         self.singlecolorlabel.pack(side=tk.LEFT)
         self.singlecolorscale.pack(side=tk.RIGHT)
-        # self.singlecolormaxscale.pack(side=tk.RIGHT)
-        # self.singlecolorminscale.pack(side=tk.RIGHT)
+        self.singlecolormaxscale.pack(side=tk.RIGHT)
+        self.singlecolorminscale.pack(side=tk.RIGHT)
         self.singlecolordropdown.pack()
         self.singlecolorframe.grid(row=4, columnspan=5, rowspan=1)
 
@@ -553,28 +567,32 @@ class App(tk.Tk):
                                                  to_=self.config.ranges['multi_color_power_max'], bg=color,
                                                  resolution=self.config.ranges['multi_color_power_resolution'],
                                                  length=200) for color in rgb}
-        # self.multicolorminscale = {color: tk.Scale(self.multicolorframes[color],
-        #                                            variable=self.multicolormin[color],
-        #                                            orient=tk.HORIZONTAL, from_=MULTICOLOR_VRANGE[0],
-        #                                            to_=MULTICOLOR_VRANGE[1], bg=color,
-        #                                            resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
-        # self.multicolormaxscale = {color: tk.Scale(self.multicolorframes[color],
-        #                                            variable=self.multicolormax[color],
-        #                                            orient=tk.HORIZONTAL, from_=MULTICOLOR_VRANGE[0],
-        #                                            to_=MULTICOLOR_VRANGE[1], bg=color,
-        #                                            resolution=MULTICOLOR_VRESOLUTION, length=200) for color in rgb}
+        self.multicolorminscale = {color: tk.Scale(self.multicolorframes[color],
+                                                   variable=self.multicolormin[color],
+                                                   orient=tk.HORIZONTAL, from_=0,
+                                                   to_=self.config.ranges['multi_color_vmin'], bg=color,
+                                                   resolution=self.config.ranges['multi_color_vresolution'],
+                                                   length=200) for color in rgb}
+        self.multicolormaxscale = {color: tk.Scale(self.multicolorframes[color],
+                                                   variable=self.multicolormax[color],
+                                                   orient=tk.HORIZONTAL, from_=self.config.ranges['multi_color_vmax'],
+                                                   to_=100, bg=color,
+                                                   resolution=self.config.ranges['multi_color_vresolution'],
+                                                   length=200) for color in rgb}
 
         for color in rgb:
             self.multicolorvars[color].set(self.config.products_map[self.config.default[color]])
             self.multicolorpower[color].set(self.config.default[color + "_power"])
             # self.multicolormin[color].set(DEFAULT_VMIN[color])
             # self.multicolormax[color].set(DEFAULT_VMAX[color])
+            self.multicolormin[color].set(0)
+            self.multicolormax[color].set(100)
             self.multicolordropdowns[color].config(bg=color, width=10)
             self.multicolorlabels[color].pack(side=tk.LEFT)
 
             self.multicolorscales[color].pack(side=tk.RIGHT)
-            # self.multicolormaxscale[color].pack(side=tk.RIGHT)
-            # self.multicolorminscale[color].pack(side=tk.RIGHT)
+            self.multicolormaxscale[color].pack(side=tk.RIGHT)
+            self.multicolorminscale[color].pack(side=tk.RIGHT)
             self.multicolordropdowns[color].pack()
             self.multicolorframes[color].pack(fill=tk.BOTH)
         multicolormasterframe.grid(row=1, column=0, columnspan=5, rowspan=3)
