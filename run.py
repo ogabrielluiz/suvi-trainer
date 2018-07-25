@@ -69,4 +69,4 @@ if __name__ == "__main__":
     # the output filenames are structured as the "thmap_[date of observation]_[date of labeling].fits"
     out_file_name = "thmap_{}_{}.fits".format(date.strftime("%Y%m%d%H%M%S"),
                                               datetime.utcnow().strftime("%Y%m%d%H%M%S"))
-    App(data, out_file_name, None, None, headers, args.config).mainloop()
+    App(data, out_file_name, headers, args.config).mainloop()

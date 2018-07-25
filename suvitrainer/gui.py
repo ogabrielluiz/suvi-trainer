@@ -21,9 +21,8 @@ from suvitrainer.config import Config
 import numpy as np
 
 import scipy.ndimage
-from scipy.spatial import ConvexHull
 
-#matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 
 
 class VerticalScrolledFrame(Frame):
@@ -113,34 +112,58 @@ class CustomToolbar(NavigationToolbar2TkAgg):
 
 
 class App(tk.Tk):
-    def __init__(self, data, output, group, image_directory, headers, config_path,
-                 blank=False, relabel=None, resizable=True):
+    """
+    The main gui app for the annotating solar images,
+    supports two regions: one for data preview and one for the thematic map
+    """
+
+    def __init__(self, data, output, headers, config_path, blank=False, relabel=None, resizable=True):
+        """
+        initialize the gui object
+        :param data: channel data for solar images
+        :type data: a dictionary of (m,n) numpy arrays, keyed by the product name
+        :param output: the directory the resulting thematic map is saved
+        :type output: string
+        :param headers: all headers associated with data
+        :type headers: a dictionary of FITS headers, keyed by product name, should match data
+        :param config_path: the path to the configuration json file
+        :type config_path: string
+        :param blank: if true, will not draw suggestion thematic map with limb, quiet sun, and outer space
+        :type blank: bool
+        :param relabel: if valued, will use that as the input thematic map to relabel
+        :type relabel: None or (m,n) numpy array
+        :param resizable: if true, the gui is resizable
+        :type resizable: bool
+        """
+
         self.config_path = config_path
         self.config = Config(config_path)
-        self.history = []
-        self.header = headers[self.config.products_map[self.config.default['header']]]
-        self.headers = headers
-        self.interpret_header()
-        self.group = group
-        self.image_directory = image_directory
+        self.history = []  # the history of regions drawn for undo feature, just a list of (m,n) thematic maps
+        self.header = headers[self.config.products_map[self.config.default['header']]]  # get the reference header
+        self.headers = headers  # store headers for later outgest in thematic map
         self.blank = blank
         self.relabel = relabel
 
-        self.region_patches = []
+        self.cx, self.cy, self.date, self.sun_radius_pixel = None, None, None, None
+        self.interpret_header()  # set self.cx, self.cy, self.sun_radius_pixel, self.date
+
+        self.region_patches = []  # a list of drawn contours around selected thematic map regions
 
         tk.Tk.__init__(self)
-        self.assign_defaults()  # setup the graphical defaults as desired
+        self.single_color_theme = 'yellow'  # color used for the single color menus
+        self.canvas_size = (10, 5)  # size of the canvas frame (in inches)
+        self.subplot_grid_spec = {'wspace': 0, 'hspace': 0, 'left': 0, 'bottom': 0, 'right': 1,
+                                  'top': 1}  # spacing of subplots in canvas
         self.output = output  # where to save the trained fits image
         self.shape = (1280, 1280)
         self.data = data
         self.title("The STU: SUVI Training Utility")
-        # self.geometry("800x900+500+200")
         self.geometry("800x780")
-        # self.make_topmost()
         self.protocol("WM_DELETE_WINDOW", self.on_exit)
         self.resizable(resizable, resizable)
-        self.make_gui()
+        self.make_gui()  # set up all the gui canvases
 
+        # if no default is requested, blank the thematic map, otherwise draw suggested
         if blank:
             self.selection_array[:, :] = self.config.solar_class_index['unlabeled']
         else:  # make default
@@ -150,22 +173,19 @@ class App(tk.Tk):
         if self.relabel:  # use a previously drawn map
             self.selection_array = self.relabel
 
-    def assign_defaults(self):
-        '''assigns variables for many graphical defaults'''
-        self.single_color_theme = 'yellow'  # color used for the single color menus
-        self.canvas_size = (10, 5)  # size of the canvas frame (in inches)
-        self.subplot_grid_spec = {'wspace': 0, 'hspace': 0, 'left': 0, 'bottom': 0, 'right': 1,
-                                  'top': 1}  # spacing of subplots in canvas
-
     def interpret_header(self):
-
+        """
+        Read pertinent information from the image headers,
+         especially location and radius of the Sun to calculate the default thematic map
+        :return: setes self.date, self.cy, self.cx, and self.sun_radius_pixel
+        """
         # handle special cases since date-obs field changed names
         if 'DATE_OBS' in self.header:
             self.date = self.header['DATE_OBS']
         elif 'DATE-OBS' in self.header:
             self.date = self.header['DATE-OBS']
         else:
-            raise Exception("Image does not have a DATE_OBS or DATE-OBS field" + str(list(self.group.keys())))
+            raise Exception("Image does not have a DATE_OBS or DATE-OBS field")
 
         self.cy, self.cx = self.header['CRPIX1'], self.header['CRPIX2']
         sun_radius_angular = sun.solar_semidiameter_angular_size(t=time.parse_time(self.date)).arcsec
@@ -173,92 +193,105 @@ class App(tk.Tk):
         self.sun_radius_pixel = (sun_radius_angular / arcsec_per_pixel)
 
     def save(self):
+        """ Save as a FITS file and attempt an upload if designated in the configuration file """
         out = Outgest(self.output, self.selection_array.astype('uint8'), self.headers, self.config_path)
         out.save()
         out.upload()
 
     def on_exit(self):
-        """When you click to exit, this function is called"""
+        """When you click to exit, this function is called, prompts whether to save"""
         answer = messagebox.askyesnocancel("Exit", "Do you want to save as you quit the application?")
         if answer:
             self.save()
             self.quit()
             self.destroy()
         elif answer is None:
-            pass
+            pass # the cancel action
         else:
             self.quit()
             self.destroy()
 
     def make_topmost(self):
-        """Makes this window the topmost window"""
+        """ Makes this window the topmost window """
         self.lift()
         self.attributes("-topmost", 1)
-        # self.attributes("-topmost", 0)
 
     def make_gui(self):
-        '''Setups the general structure of the gui, the first function called'''
+        """  Setups the general structure of the gui, the first function called """
         self.option_window = Toplevel()
         self.option_window.protocol("WM_DELETE_WINDOW", self.on_exit)
         self.canvas_frame = tk.Frame(self, height=500)
-        self.option_frame = tk.Frame(self.option_window, height=300)  # self.option_frame_height)
-        self.canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)  # True)
+        self.option_frame = tk.Frame(self.option_window, height=300)
+        self.canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.option_frame.pack(side=tk.RIGHT, fill=None, expand=False)
         self.make_options_frame()
         self.make_canvas_frame()
         self.disable_singlecolor()
 
-    def configure_threecolor_image(self, scale=False):
-        ''' configures the three color image according to the requested parameters '''
+    def configure_threecolor_image(self):
+        """ 
+        configures the three color image according to the requested parameters 
+        :return: nothing, just updates self.image
+        """
         order = {'red': 0, 'green': 1, 'blue': 2}
         self.image = np.zeros((self.shape[0], self.shape[1], 3))
         for color, var in self.multicolorvars.items():
-            channel = var.get()
+            channel = var.get()  # determine which channel should be plotted as this color
             self.image[:, :, order[color]] = self.data[channel]
+
+            # scale the image by the power
             self.image[:, :, order[color]] = np.power(self.image[:, :, order[color]],
                                                       self.multicolorpower[color].get())
 
+            # adjust the percentile thresholds
             lower = np.nanpercentile(self.image[:, :, order[color]], self.multicolormin[color].get())
             upper = np.nanpercentile(self.image[:, :, order[color]], self.multicolormax[color].get())
             self.image[np.where(self.image[:, :, order[color]] < lower)] = lower
             self.image[np.where(self.image[:, :, order[color]] > upper)] = upper
 
-            # if scale:
-            #     lower_limit = np.nanpercentile(self.image[:, :, order[color]], 1)
-            #     upper_limit = np.nanpercentile(self.image[:, :, order[color]], 99)
-            #     self.image[np.where(self.image[:, :, order[color]] < lower_limit)] = lower_limit
-            #     self.image[np.where(self.image[:, :, order[color]] > upper_limit)] = upper_limit
-
+        # image values must be between (0,1) so scale image
         for color, index in order.items():
             self.image[:, :, index] /= np.nanmax(self.image[:, :, index])
 
     def configure_singlecolor_image(self, scale=False):
-        ''' configures the three color image according to the requested parameters '''
+        """
+        configures the single color image according to the requested parameters
+        :return: nothing, just updates self.image
+        """
+        # determine which channel to use
         self.image = self.data[self.singlecolorvar.get()]
+
+        # scale the image by requested power
         self.image = np.power(self.image, self.singlecolorpower.get())
+
+        # adjust the percentile thresholds
         lower = np.nanpercentile(self.image, self.singlecolormin.get())
         upper = np.nanpercentile(self.image, self.singlecolormax.get())
         self.image[self.image < lower] = lower
         self.image[self.image > upper] = upper
 
-        # if scale:
-        #     lower_limit = np.nanpercentile(self.image, 1)
-        #     upper_limit = np.nanpercentile(self.image, 99)
-        #     self.image[np.where(self.image < lower_limit)] = lower_limit
-        #     self.image[np.where(self.image > upper_limit)] = upper_limit
-
+        # image values must be between (0,1) so scale image
         self.image /= np.nanmax(self.image)
 
     def updateArray(self, array, indices, value):
-        ''' Updates array so that pixels at indices take on the value '''
+        """
+        updates array so that pixels at indices take on value
+        :param array: (m,n) array to adjust
+        :param indices: flattened image indices to change value
+        :param value: new value to assign
+        :return: the changed (m,n) array
+        """
         lin = np.arange(array.size)
-        newArray = array.flatten()
-        newArray[lin[indices]] = value
-        return newArray.reshape(array.shape)
+        new_array = array.flatten()
+        new_array[lin[indices]] = value
+        return new_array.reshape(array.shape)
 
     def onlasso(self, verts):
-        ''' Main function to control the action of the lasso '''
-        global selection_array, pix, solar_class_var  # TODO is global really needed here?
+        """
+        Main function to control the action of the lasso, allows user to draw on data image and adjust thematic map
+        :param verts: the vertices selected by the lasso
+        :return: nothin, but update the selection array so lassoed region now has the selected theme, redraws canvas
+        """
         p = path.Path(verts)
         ind = p.contains_points(self.pix, radius=1)
         self.history.append(self.selection_array.copy())
@@ -269,7 +302,7 @@ class App(tk.Tk):
         self.fig.canvas.draw_idle()
 
     def make_canvas_frame(self):
-        ''' Create the canvas frame for the first time '''
+        """ Create the data and thematic map images for the first time """
 
         self.fig, (self.imageax, self.previewax) = plt.subplots(ncols=2,
                                                                 figsize=self.canvas_size,
@@ -279,21 +312,21 @@ class App(tk.Tk):
         cid = self.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvas.mpl_connect('key_press_event', self.onpress)
 
-        self.imageax.plot()  # TODO is this really needed?
+        # set up the channel data view
         self.configure_threecolor_image()
         self.imageplot = self.imageax.imshow(self.image)
         self.imageax.set_xlim([0, self.shape[0]])
         self.imageax.set_ylim([0, self.shape[0]])
-        self.imageax.set_aspect("equal")  # TODO is this really needed?
+        # self.imageax.set_aspect("equal")
         self.imageax.set_axis_off()
 
+        # set up the thematic map view
         self.selection_array = np.zeros(self.shape, dtype=np.uint8)
         if self.blank:
             self.selection_array += self.config.solar_class_index['unlabeled']
         else:
             self.draw_default()
         self.history.append(self.selection_array)
-        # ordered_solar_classes = dict([(index, label) for label, index in SOLAR_CLASSES])
         colortable = [self.config.solar_colors[self.config.solar_class_name[i]]
                       for i in range(len(self.config.solar_classes))]
         cmap = matplotlib.colors.ListedColormap(colortable)
@@ -307,17 +340,21 @@ class App(tk.Tk):
         self.previewax.set_aspect("equal")
         self.previewax.set_axis_off()
 
+        # add selection layer for lasso
         self.pix = np.arange(self.shape[0])  # assumes square image
         xv, yv = np.meshgrid(self.pix, self.pix)
         self.pix = np.vstack((xv.flatten(), yv.flatten())).T
 
-        lineprops = dict(color="red", linewidth=2)
+        lineprops = dict(color=self.config.default['lasso_color'],
+                         linewidth=self.config.default['lasso_width'])
         self.lasso = LassoSelector(self.imageax, self.onlasso, lineprops=lineprops)
 
+        # display everything
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+        # add the tool bar
         self.toolbarcenterframe = tk.LabelFrame(self.canvas_frame,
                                                 borderwidth=0,
                                                 text="Draw: unlabeled",
@@ -326,7 +363,6 @@ class App(tk.Tk):
                                                 background='red')
         toolbarframe = tk.Frame(self.toolbarcenterframe)
         toolbar = CustomToolbar(self.canvas, toolbarframe, self.toolbarcenterframe, self)
-
         toolbar.update()
         self.fig.canvas.toolbar.set_message = lambda x: ""  # remove state reporting
         toolbarframe.pack()
@@ -422,6 +458,7 @@ class App(tk.Tk):
             self.fig.canvas.draw_idle()
 
     def make_options_frame(self):
+        """ make the frame that allows for configuration and classification"""
         self.tab_frame = ttk.Notebook(self.option_frame, width=800)
         self.tab_configure = tk.Frame(self.tab_frame)
         self.tab_classify = tk.Frame(self.tab_frame)
@@ -433,7 +470,7 @@ class App(tk.Tk):
         self.tab_frame.pack(fill=tk.BOTH, expand=True)
 
     def disable_multicolor(self):
-        ''' swap from the multicolor image to the single color image '''
+        """ swap from the multicolor image to the single color image """
         # disable the multicolor image
         for color in ['red', 'green', 'blue']:
             self.multicolorscales[color].config(state=tk.DISABLED, bg='grey')
@@ -452,7 +489,7 @@ class App(tk.Tk):
         self.singlecolormaxscale.config(bg=self.single_color_theme, state=tk.NORMAL)
 
     def disable_singlecolor(self):
-        ''' swap from the single color image to the multicolor image '''
+        """ swap from the single color image to the multicolor image """
         # enable the multicolor
         for color in ['red', 'green', 'blue']:
             self.multicolorscales[color].config(state=tk.NORMAL, bg=color)
@@ -471,6 +508,7 @@ class App(tk.Tk):
         self.singlecolormaxscale.config(bg="grey", state=tk.DISABLED)
 
     def update_button_action(self):
+        """ when update button is clicked, refresh the data preview"""
         if self.mode.get() == 3:  # threecolor
             self.configure_threecolor_image()
         elif self.mode.get() == 1:  # singlecolor
@@ -484,6 +522,7 @@ class App(tk.Tk):
         self.fig.canvas.draw_idle()
 
     def make_configure_tab(self):
+        """ initial set up of configure tab"""
         # Setup the choice between single and multicolor
         modeframe = tk.Frame(self.tab_configure)
         self.mode = tk.IntVar()
@@ -502,7 +541,34 @@ class App(tk.Tk):
         self.setup_multicolor()
         self.setup_singlecolor()
 
+    def make_classify_tab(self):
+        """ initial set up of classification tab"""
+        self.pick_frame = tk.Frame(self.tab_classify)
+        self.pick_frame2 = tk.Frame(self.tab_classify)
+
+        self.solar_class_var = tk.IntVar()
+        self.solar_class_var.set(0)  # initialize to unlabeled
+        buttonnum = 0
+        frame = [self.pick_frame, self.pick_frame2]
+        for text, value in self.config.solar_classes:
+            b = tk.Radiobutton(frame[buttonnum % 2], text=text,
+                               # b = tk.Radiobutton(frame[buttonnum%2].interior, text=text,
+                               variable=self.solar_class_var,
+                               value=value, background=self.config.solar_colors[text],
+                               indicatoron=0, width=50, height=2, command=self.change_class)
+            b.pack(fill=tk.BOTH, expand=1)
+            buttonnum += 1
+
+
+        self.pick_frame.grid(row=0, column=0, rowspan=5, sticky=tk.W + tk.E + tk.N + tk.S)
+        self.pick_frame2.grid(row=0, column=1, rowspan=5, sticky=tk.W + tk.E + tk.N + tk.S)
+
+        undobutton = tk.Button(master=self.tab_classify, text="Undo",
+                               command=self.undobutton_action)
+        undobutton.grid(row=6, column=0, columnspan=2, sticky=tk.W + tk.E)
+
     def setup_singlecolor(self):
+        """ initial setup of single color options and variables"""
         self.singlecolorframe = tk.Frame(self.tab_configure, bg=self.single_color_theme)
         channel_choices = sorted(list(self.data.keys()))
         self.singlecolorlabel = tk.Label(self.singlecolorframe, text="single", bg=self.single_color_theme, width=10)
@@ -533,8 +599,6 @@ class App(tk.Tk):
         self.singlecolorpower.set(self.config.default['single_power'])
         self.singlecolormin.set(0)
         self.singlecolormax.set(100)
-        #self.singlecolormin.set(DEFAULT_VMIN['single'])
-        #self.singlecolormax.set(DEFAULT_VMAX['single'])
         self.singlecolordropdown.config(bg=self.single_color_theme, width=10)
         self.singlecolorlabel.pack(side=tk.LEFT)
         self.singlecolorscale.pack(side=tk.RIGHT)
@@ -544,6 +608,7 @@ class App(tk.Tk):
         self.singlecolorframe.grid(row=4, columnspan=5, rowspan=1)
 
     def setup_multicolor(self):
+        """ initial setup of multicolor options and variables"""
         # Setup the options for multicolor
         multicolormasterframe = tk.Frame(self.tab_configure)
         channel_choices = sorted(list(self.data.keys()))
@@ -583,8 +648,7 @@ class App(tk.Tk):
         for color in rgb:
             self.multicolorvars[color].set(self.config.products_map[self.config.default[color]])
             self.multicolorpower[color].set(self.config.default[color + "_power"])
-            # self.multicolormin[color].set(DEFAULT_VMIN[color])
-            # self.multicolormax[color].set(DEFAULT_VMAX[color])
+
             self.multicolormin[color].set(0)
             self.multicolormax[color].set(100)
             self.multicolordropdowns[color].config(bg=color, width=10)
@@ -598,6 +662,7 @@ class App(tk.Tk):
         multicolormasterframe.grid(row=1, column=0, columnspan=5, rowspan=3)
 
     def undobutton_action(self):
+        """ when undo is clicked, revert the thematic map to the previous state"""
         if len(self.history) > 1:
             old = self.history.pop(-1)
             self.selection_array = old
@@ -605,56 +670,8 @@ class App(tk.Tk):
             self.fig.canvas.draw_idle()
 
     def change_class(self):
-        ''' on changing the classification label, update the "draw" text '''
+        """ "on changing the classification label, update the "draw" text """
         self.toolbarcenterframe.config(text="Draw: {}".format(self.config.solar_class_name[self.solar_class_var.get()]))
-
-    def make_classify_tab(self):
-        self.pick_frame = tk.Frame(self.tab_classify)
-        self.pick_frame2 = tk.Frame(self.tab_classify)
-        # self.pick_frame = VerticalScrolledFrame(self.tab_classify) #
-        # self.pick_frame2 = VerticalScrolledFrame(self.tab_classify) #
-        # self.pick_label = tk.Label(self.pick_frame,
-        #                           text="Choose a label:",
-        #                           font=BOLDFONT).pack()
-        self.solar_class_var = tk.IntVar()
-        self.solar_class_var.set(0)  # initialize to unlabeled
-        buttonnum = 0
-        frame = [self.pick_frame, self.pick_frame2]
-        for text, value in self.config.solar_classes:
-            b = tk.Radiobutton(frame[buttonnum % 2], text=text,
-                               # b = tk.Radiobutton(frame[buttonnum%2].interior, text=text,
-                               variable=self.solar_class_var,
-                               value=value, background=self.config.solar_colors[text],
-                               indicatoron=0, width=50, height=2, command=self.change_class)
-            b.pack(fill=tk.BOTH, expand=1)
-            buttonnum += 1
-            #
-            # if buttonnum %2 == 0:
-            #    b.pack(anchor=tk.W)
-            # else:
-            #    b.pack(anchor=tk.E)
-            # buttonnum += 1
-
-        self.pick_frame.grid(row=0, column=0, rowspan=5, sticky=tk.W + tk.E + tk.N + tk.S)
-        self.pick_frame2.grid(row=0, column=1, rowspan=5, sticky=tk.W + tk.E + tk.N + tk.S)
-        # self.pick_frame.pack(side=tk.LEFT, anchor=tk.NW, fill=tk.X, expand=1)#grid(row=0, column=0)
-        # self.pick_frame2.pack(side=tk.RIGHT, anchor=tk.NE, fill=tk.X, expand=1)
-        undobutton = tk.Button(master=self.tab_classify, text="Undo",
-                               command=self.undobutton_action)
-        undobutton.grid(row=6, column=0, columnspan=2, sticky=tk.W + tk.E)
-        # undobutton.pack(side=tk.TOP, anchor=tk.N, fill=tk.X, expand=1)
-
-        # self.confidence_frame = tk.Frame(self.tab_classify)
-        # self.confidence_label = tk.Label(self.confidence_frame,
-        #                                  text="Choose a confidence level:",
-        #                                  font=BOLDFONT).pack()
-        # self.confidence_var = tk.IntVar()
-        # self.confidence_var.set(3) # initialized to midpoint
-        # for text, value in CONFIDENCE_LEVELS:
-        #     b = tk.Radiobutton(self.confidence_frame, text=text,
-        #                        variable=self.confidence_var, value=value)
-        #     b.pack(anchor=tk.W)
-        # self.confidence_frame.pack(side=tk.RIGHT)#grid(row=0, column=1)
 
     def draw_circle(self, center, radius, array, value, mode="set"):
         """
