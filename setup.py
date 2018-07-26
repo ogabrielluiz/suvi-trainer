@@ -4,7 +4,7 @@ with open("Readme.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='suvitrainer',
-      version='1.0.2',
+      version='1.0.3',
       description='Training tool for SUVI thematic map machine learning',
       url='https://github.com/jmbhughes/suvi-trainer',
       author='J. Marcus Hughes',
@@ -26,4 +26,5 @@ setup(name='suvitrainer',
                         'requests',
                         'suds-jurko',
                         'drms',
-                        "scipy"])
+                        "scipy",
+                        "python-dateutil"])

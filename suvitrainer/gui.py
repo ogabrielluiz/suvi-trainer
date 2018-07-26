@@ -377,6 +377,8 @@ class App(tk.Tk):
                 patch.remove()
             self.region_patches = []
             self.fig.canvas.draw_idle()
+        elif event.key == "u":
+            self.undo_button_action()
 
     def onclick(self, event):
         """
