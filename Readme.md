@@ -1,4 +1,5 @@
 # suvi-trainer
+[![CodeFactor](https://www.codefactor.io/repository/github/jmbhughes/suvi-trainer/badge/master)](https://www.codefactor.io/repository/github/jmbhughes/suvi-trainer/overview/master)
 
 The [Solar Ultraviolet Imager](https://www.goes-r.gov/spacesegment/suvi.html) (SUVI) aboard the National Oceanic 
 and Atmospheric Administration's Geostationary Operational Environmental R-Series satellites is used 
