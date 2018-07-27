@@ -1,6 +1,6 @@
 import tkinter as tk
-from tkinter import *  # bad idea... but I did it
-from tkinter import messagebox, ttk
+# from tkinter import *  # bad idea... but I did it
+from tkinter import messagebox, ttk, Frame, Scrollbar, Canvas, LEFT, VERTICAL, RIGHT, FALSE, TRUE, BOTH, NW, Toplevel, Y
 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -378,7 +378,7 @@ class App(tk.Tk):
             self.region_patches = []
             self.fig.canvas.draw_idle()
         elif event.key == "u":
-            self.undo_button_action()
+            self.undobutton_action()
 
     def onclick(self, event):
         """
@@ -406,7 +406,7 @@ class App(tk.Tk):
             path = [coords[0]]
             coords = coords[1:]
 
-            while coords:  # and steps < 5:
+            while len(coords):  # and steps < 5:
                 dist = np.sum(np.abs(path[-1] - coords), axis=1)
 
                 # neighbor_index = np.where(dist == 1)[0][0]
@@ -430,7 +430,7 @@ class App(tk.Tk):
                 clip = [coords[neighbor_index].copy()]
                 coords[neighbor_index:-1] = coords[neighbor_index + 1:]
                 coords = coords[:-1]
-                while coords:
+                while len(coords):
                     dist = np.sum(np.abs(clip[-1] - coords), axis=1)
                     # neighbor_index = np.where(dist == 1)[0][0]
                     neighbor_index = np.argmin(dist)

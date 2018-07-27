@@ -46,7 +46,7 @@ if __name__ == "__main__":
     else:  # not a local file so it's either a website or a date
         try:  # it's a link
             dates = get_dates_link(args.date)
-        except (ValueError, urllib.error.URLError) as e:
+        except:
             try:
                 dates = [(dateparser.parse(args.date), 1)]
             except:
