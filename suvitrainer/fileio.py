@@ -41,15 +41,12 @@ def get_dates_link(url):
     return dates
 
 
-DEFAULT_PRODUCTS = ["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
-                    "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"]
-
-
 class Fetcher:
     """ retrieves channel images for a specific time """
 
     def __init__(self, date,
-                 products=DEFAULT_PRODUCTS,
+                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
+                    "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
                  suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/",
                  verbose=True):
         """
