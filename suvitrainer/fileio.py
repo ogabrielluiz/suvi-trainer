@@ -34,8 +34,7 @@ def get_dates_file(path):
 
 
 def get_dates_link(url):
-    req = urllib.request.Request(url)
-    urllib.request.urlretrieve(req, "temp.txt")
+    urllib.request.urlretrieve(url, "temp.txt")
     dates = get_dates_file("temp.txt")
     os.remove("temp.txt")
     return dates
