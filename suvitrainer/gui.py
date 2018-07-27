@@ -405,8 +405,8 @@ class App(tk.Tk):
             coords = np.dstack([x, y])[0]
             path = [coords[0]]
             coords = coords[1:]
-            not_finished = True
-            while len(coords):  # and steps < 5:
+
+            while coords:  # and steps < 5:
                 dist = np.sum(np.abs(path[-1] - coords), axis=1)
 
                 # neighbor_index = np.where(dist == 1)[0][0]
@@ -430,14 +430,14 @@ class App(tk.Tk):
                 clip = [coords[neighbor_index].copy()]
                 coords[neighbor_index:-1] = coords[neighbor_index + 1:]
                 coords = coords[:-1]
-                while len(coords):
+                while coords:
                     dist = np.sum(np.abs(clip[-1] - coords), axis=1)
                     # neighbor_index = np.where(dist == 1)[0][0]
                     neighbor_index = np.argmin(dist)
                     if dist[neighbor_index] < 5:
                         # print(coords[neighbor_index], dist[neighbor_index])
                         clip.append(coords[neighbor_index].copy())
-                        coords[neighbor_index:-1] = coords[neighbor_index + 1:];
+                        coords[neighbor_index:-1] = coords[neighbor_index + 1:]
                         coords = coords[:-1]
                         # not_finished = len(coords) != 0
                     else:

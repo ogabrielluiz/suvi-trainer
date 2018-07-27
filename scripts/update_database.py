@@ -12,11 +12,6 @@ from suvitrainer.fileio import get_dates_link, get_dates_file
 
 import ipdb
 from collections import Counter
-"""
-Using training data, creates a csv database that lists the date of observation, the date trained, 
-how many pixels were classified key themes ('flare', 'coronal_hole', 'bright_region', 'filament', 'prominence'), 
-and who the trainer is. 
-"""
 
 themes = ['flare', 'coronal_hole', 'bright_region', 'filament', 'prominence']
 
@@ -62,8 +57,8 @@ def update_dates_priority(df,
                           dates_url="https://raw.githubusercontent.com/jmbhughes/suvi-trainer/master/dates.txt"):
     priority = dict()
     dates = get_dates_link(dates_url)
-    counted_dates = Counter([row['filename'].split("_")[1] for index, row in df.iterrows()])
-    for date, weight in dates:
+    counted_dates = Counter([row['filename'].split("_")[1] for _, row in df.iterrows()])
+    for date, _ in dates:
         key = date.strftime("%Y%m%d%H%M%S")
         if key in counted_dates:
             priority[date] = 1/(counted_dates[key] + 1)

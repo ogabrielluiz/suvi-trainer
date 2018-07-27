@@ -21,7 +21,7 @@ from skimage.transform import AffineTransform, warp
 
 def convert_time_string(date_str):
     """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
-    dt, _, us = date_str.partition(".")
+    dt, _, _ = date_str.partition(".")
     dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
     return dt
 
@@ -41,12 +41,15 @@ def get_dates_link(url):
     return dates
 
 
+DEFAULT_PRODUCTS = ["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
+                    "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"]
+
+
 class Fetcher:
     """ retrieves channel images for a specific time """
 
     def __init__(self, date,
-                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
-                           "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
+                 products=DEFAULT_PRODUCTS,
                  suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/",
                  verbose=True):
         """
@@ -67,11 +70,12 @@ class Fetcher:
 
         def fn_map(product):
             if "halpha" in product:
-                return self.fetch_halpha()
+                result = self.fetch_halpha()
             elif "aia" in product:
-                return self.fetch_aia(product)
+                result = self.fetch_aia(product)
             else:
-                return self.fetch_suvi(product)
+                result = self.fetch_suvi(product)
+            return result
 
         results = pool.map(fn_map, self.products)
         results = {product: (head, data) for product, head, data in results}
@@ -199,7 +203,7 @@ class Fetcher:
         links = [link for link in links if "SUVI" in link]
         meta = [self.parse_filename_meta(fn) for fn in links]
         links = sorted(meta, key=lambda m: np.abs((m[2] - self.date).total_seconds()))[:10]
-        links = [fn for fn, start, end, platform, product in meta]
+        links = [fn for fn, _, _, _, _ in meta]
 
         i = 0
 
@@ -312,7 +316,6 @@ class Fetcher:
                (3) Axis 1 refers to the physical x-axis and axis 2 refers to the physical y-axis, e.g. CRPIX1 is
                    the center pixel value wrt the x-axis and CRPIX2 is wrt the y-axis.
         """
-        from skimage.transform import warp
         from skimage.transform import ProjectiveTransform
 
         # Start with 3x3 identity matrix and original header metadata (no corrections)
@@ -439,7 +442,7 @@ class Outgest:
         self.ref_hdr = headers[self.config.products_map[self.config.default['header']]]
         self.start_time = date_parser.parse(self.ref_hdr['date-obs'])
         self.end_time = date_parser.parse(self.ref_hdr['date-obs'])
-        for channel, header in headers.items():
+        for _, header in headers.items():
             date = date_parser.parse(header['date-obs'])
             if date < self.start_time:
                 self.start_time = date
