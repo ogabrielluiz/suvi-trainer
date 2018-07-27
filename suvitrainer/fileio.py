@@ -18,6 +18,7 @@ from sunpy.net import vso
 from astropy.units import Quantity
 from skimage.transform import AffineTransform, warp
 
+from dateutil import parser as dateparser
 
 def convert_time_string(date_str):
     """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
@@ -427,6 +428,104 @@ class Fetcher:
             pass
 
         return data_corr, upd_meta
+
+
+class PNGMaker:
+    def __init__(self, thematic_map_hdu, config_path):
+        self.config = Config(config_path)
+        self.thmap = thematic_map_hdu[0].data
+        self.date = dateparser.parse(thematic_map_hdu[0].header['date-end'])
+
+    def save_thematic_map(self, outpath=None):
+        from matplotlib.patches import Patch
+
+        fig, previewax = plt.subplots()
+        shape = self.thmap.shape
+        previewax.imshow(self.thmap,
+                         origin='lower',
+                         interpolation='nearest',
+                         cmap=self.config.solar_cmap,
+                         vmin=-1, vmax=len(self.config.solar_classes)-1)
+
+        legend_elements = [Patch(facecolor=c, label=sc, edgecolor='k')
+                           for sc, c in self.config.solar_colors.items()]
+        previewax.legend(handles=legend_elements, fontsize='x-small',
+                         bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                         ncol=2, mode="expand", borderaxespad=0.)
+        previewax.set_xlim([0, shape[0]])
+        previewax.set_ylim([0, shape[0]])
+        previewax.set_aspect("equal")
+        previewax.set_axis_off()
+
+        if outpath:
+            fig.savefig(outpath, dpi=300,
+                        transparent=True,
+                        bbox_inches='tight',
+                        pad_inches=0.)
+            plt.close()
+        else:
+            plt.show()
+
+    def make_three_color(self, upper_percentile=100, lower_percentile=0):
+        order = {'red': 0, 'green': 1, 'blue': 2}
+        shape = self.thmap.shape
+        three_color = np.zeros((shape[0], shape[1], 3))
+        channel_colors = {color: self.config.default[color] for color in ['red', 'green', 'blue']}
+
+        data = Fetcher(self.date, products=list(channel_colors.values()), verbose=False).fetch()
+        for color, channel in channel_colors.items():
+            three_color[:, :, order[color]] = data[channel][1]
+
+            # scale the image by the power
+            three_color[:, :, order[color]] = np.power(three_color[:, :, order[color]],
+                                                      self.config.default["{}_power".format(color)])
+
+            # adjust the percentile thresholds
+            lower = np.nanpercentile(three_color[:, :, order[color]], lower_percentile)
+            upper = np.nanpercentile(three_color[:, :, order[color]], upper_percentile)
+            three_color[np.where(three_color[:, :, order[color]] < lower)] = lower
+            three_color[np.where(three_color[:, :, order[color]] > upper)] = upper
+
+        # image values must be between (0,1) so scale image
+        for color, index in order.items():
+            three_color[:, :, index] /= np.nanmax(three_color[:, :, index])
+        return three_color
+
+    def save_comparison_map(self, outpath=None, include_legend=False):
+        from matplotlib.patches import Patch
+
+        fig, axs = plt.subplots(ncols=2, sharex=True, sharey=True)
+
+        three_color = self.make_three_color()
+        axs[0].imshow(three_color)
+        axs[0].set_axis_off()
+
+        shape = self.thmap.shape
+        axs[1].imshow(self.thmap,
+                     origin='lower',
+                     interpolation='nearest',
+                     cmap=self.config.solar_cmap,
+                     vmin=-1, vmax=len(self.config.solar_classes)-1)
+
+        if include_legend:
+            legend_elements = [Patch(facecolor=c, label=sc, edgecolor='k')
+                               for sc, c in self.config.solar_colors.items()]
+            axs[1].legend(handles=legend_elements, fontsize='x-small',
+                         bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                         ncol=2, mode="expand", borderaxespad=0.)
+        axs[1].set_xlim([0, shape[0]])
+        axs[1].set_ylim([0, shape[0]])
+        axs[1].set_aspect("equal")
+        axs[1].set_axis_off()
+
+        if outpath:
+            fig.savefig(outpath, dpi=300,
+                        transparent=True,
+                        bbox_inches='tight',
+                        pad_inches=0.)
+            plt.close()
+        else:
+            plt.show()
 
 
 class Outgest:
