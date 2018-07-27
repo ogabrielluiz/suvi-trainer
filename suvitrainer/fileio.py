@@ -34,8 +34,8 @@ def get_dates_file(path):
 
 
 def get_dates_link(url):
-    # TODO: remove this temp.txt and make it less hardcoded, e.g. check for permissions
-    urllib.request.urlretrieve(url, "temp.txt")
+    req = urllib.request.Request(url)
+    urllib.request.urlretrieve(req, "temp.txt")
     dates = get_dates_file("temp.txt")
     os.remove("temp.txt")
     return dates
@@ -75,7 +75,7 @@ class Fetcher:
 
         results = pool.map(fn_map, self.products)
         results = {product: (head, data) for product, head, data in results}
-        for product, (head, data) in results.items():
+        for product, (_, data) in results.items():
             if data is None:
                 sys.exit("The {} channel was empty. Please try again.".format(product) +
                          "Sometimes a second reload or a different date is needed")
@@ -457,15 +457,15 @@ class Outgest:
                 card = hdr_src.cards[card_ind]
                 hdu.header.append((card.keyword, card.value, card.comment))
             except:
-                pass
+                print("{} not saved".format(hdr_key))
 
     def upload(self):
         if self.config.upload:
             try:
                 session = ftplib.FTP('ftp.jmbhughes.com', 'trainer@jmbhughes.com', self.config.upload_password)
-                file = open(self.filename, 'rb')
-                session.storbinary('STOR ' + self.filename, file)  # send the file
-                file.close()  # close file and FTP
+                f = open(self.filename, 'rb')
+                session.storbinary('STOR ' + self.filename, f)  # send the file
+                f.close()  # close file and FTP
                 session.quit()
                 success = True
             except:
@@ -553,7 +553,7 @@ class Outgest:
             pri_hdu.header.insert(pri_hdu.header.index("SOLAR_B0") + 3,
                                   ("COMMENT", '------------------------------------------------------------------------'))
         except:
-            pass
+            print("This thematic map may be degraded and missing many keywords.")
 
         # Thematic map feature list (Secondary HDU extension)
         map_val = []

@@ -307,7 +307,7 @@ class App(tk.Tk):
                                                                 sharex=True, sharey=True,
                                                                 gridspec_kw=self.subplot_grid_spec)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.canvas_frame)
-        cid = self.canvas.mpl_connect('button_press_event', self.onclick)
+        self.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvas.mpl_connect('key_press_event', self.onpress)
 
         # set up the channel data view
@@ -406,23 +406,21 @@ class App(tk.Tk):
             path = [coords[0]]
             coords = coords[1:]
             not_finished = True
-            while not_finished:  # and steps < 5:
+            while len(coords):  # and steps < 5:
                 dist = np.sum(np.abs(path[-1] - coords), axis=1)
 
                 # neighbor_index = np.where(dist == 1)[0][0]
                 neighbor_index = np.argmin(dist)
 
                 if dist[neighbor_index] < 5:
-
-
                     path.append(coords[neighbor_index].copy())
-                    coords[neighbor_index:-1] = coords[neighbor_index + 1:];
+                    coords[neighbor_index:-1] = coords[neighbor_index + 1:]
                     coords = coords[:-1]
-                    not_finished = len(coords) != 0
+                    # not_finished = len(coords) != 0
                 else:
                     break
 
-            #path.append(path[0].copy())
+            # path.append(path[0].copy())
             path = np.array(path)
 
             clips = []
@@ -430,8 +428,9 @@ class App(tk.Tk):
                 dist = np.sum(np.abs(path[-1] - coords), axis=1)
                 neighbor_index = np.argmin(dist)
                 clip = [coords[neighbor_index].copy()]
-                coords[neighbor_index:-1] = coords[neighbor_index + 1:]; coords = coords[:-1]
-                while not_finished:
+                coords[neighbor_index:-1] = coords[neighbor_index + 1:]
+                coords = coords[:-1]
+                while len(coords):
                     dist = np.sum(np.abs(clip[-1] - coords), axis=1)
                     # neighbor_index = np.where(dist == 1)[0][0]
                     neighbor_index = np.argmin(dist)
@@ -440,7 +439,7 @@ class App(tk.Tk):
                         clip.append(coords[neighbor_index].copy())
                         coords[neighbor_index:-1] = coords[neighbor_index + 1:];
                         coords = coords[:-1]
-                        not_finished = len(coords) != 0
+                        # not_finished = len(coords) != 0
                     else:
                         break
                 clips.append(np.array(clip))
@@ -750,5 +749,3 @@ class App(tk.Tk):
                          self.sun_radius_pixel - inside,
                          self.selection_array,
                          self.config.solar_class_index['quiet_sun'])
-
-
