@@ -15,11 +15,13 @@ for development and testing purposes. At the moment, it is advised to run this c
 Python 3.5. Installation should only require running the `setup.py` script. 
  
 ### Installing
-After [creating a separate virtual environment](https://realpython.com/python-virtual-environments-a-primer/), installation should be simply:
 ```
 python3 setup.py install
 ```
-(There is also a stable version that can be installed from PyPi using `pip3 install suvitrainer`)
+or
+```
+pip3 install suvitrainer
+```
 You will need to edit the [configuration file](config_example.json) to include your name and the upload password. Please 
 [contact me](mailto:hughes.jmb@gmail.com) for the password and further information. 
 
@@ -42,6 +44,7 @@ The list of options for input images:
 - any of the AIA EUV channels listed as `aia-[WAVELENGTH]` with the wavelength in angstroms, e.g. `aia-131`
 - any of the SUVI EUV L1B channels listed as products, e.g. `suvi-l1b-fe131` 
 (see the [FTP site](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/) for a list)
+- any locally saved SUVI l2 composite images (only available internally to NOAA employees at this time), e.g. `suvi-l2-ci094`
 ## Data
 The output of training is saved as a FITS file which is later converted into a labeled png. 
 I will share the results of labeling with this tool using 

@@ -62,7 +62,10 @@ if __name__ == "__main__":
         print("Running for {}".format(date))
 
     # Load data and organize input
-    f = Fetcher(date, products=config.products, verbose=args.verbose)
+    f = Fetcher(date, config.products,
+                suvi_base_url=config.suvi_base_url,
+                suvi_composite_path=config.suvi_composite_path,
+                verbose=args.verbose)
     results = f.fetch()
 
     data, headers = dict(), dict()
