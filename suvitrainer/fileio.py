@@ -20,6 +20,7 @@ from skimage.transform import AffineTransform, warp
 
 from dateutil import parser as dateparser
 
+
 def convert_time_string(date_str):
     """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
     dt, _, _ = date_str.partition(".")
@@ -28,6 +29,7 @@ def convert_time_string(date_str):
 
 
 def get_dates_file(path):
+    """ parse dates file of dates and probability of choosing"""
     with open(path) as f:
         dates = f.readlines()
     return [(convert_time_string(date_string.split(" ")[0]), float(date_string.split(" ")[1]))
@@ -35,6 +37,7 @@ def get_dates_file(path):
 
 
 def get_dates_link(url):
+    """ download the dates file from the internet and parse it as a dates file"""
     urllib.request.urlretrieve(url, "temp.txt")
     dates = get_dates_file("temp.txt")
     os.remove("temp.txt")
@@ -45,17 +48,19 @@ class Fetcher:
     """ retrieves channel images for a specific time """
 
     def __init__(self, date,
-                 products=["suvi-l1b-fe094","suvi-l1b-fe131", "suvi-l1b-fe171",
-                    "suvi-l1b-fe195", "suvi-l1b-fe284", "suvi-l1b-he304", "halpha"],
+                 products,
                  suvi_base_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/",
+                 suvi_composite_path="/home/marcus/grive/suvi_training/images/",
                  verbose=True):
         """
         :param date: a date object the indicates when the observation is from
         :param suvi_base_url: the url to the top level goes-16 data page
-        :param products: a list of products to fetch
+        :param suvi_composite_path: the path to local suvi composites, not required for other file types
+        :param products: a list of products to fetch, e.g. suvi-l2-ci094, suvi-l1b-fe094, halpha, aia-94
         """
         self.date = date
         self.suvi_base_url = suvi_base_url
+        self.suvi_composite_path = suvi_composite_path
         self.products = products
         self.verbose = verbose
 
@@ -65,16 +70,20 @@ class Fetcher:
         """
         pool = ThreadPool()
 
-        def fn_map(product):
+        def func_map(product):
             if "halpha" in product:
                 result = self.fetch_halpha()
             elif "aia" in product:
                 result = self.fetch_aia(product)
+            elif "l1b" in product:
+                result = self.fetch_suvi_l1b(product)
+            elif "l2-ci" in product:
+                result = self.fetch_suvi_composite(product)
             else:
-                result = self.fetch_suvi(product)
+                raise ValueError("{} is not a valid product.".format(product))
             return result
 
-        results = pool.map(fn_map, self.products)
+        results = pool.map(func_map, self.products)
         results = {product: (head, data) for product, head, data in results}
         for product, (_, data) in results.items():
             if data is None:
@@ -85,9 +94,9 @@ class Fetcher:
     def fetch_halpha(self, correct=True):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
-        :param verbose: print help information as running
         :param correct: remove nans and negatives
-        :return: "halpha" and then a fits header and data object for the GONG image at that time
+        :return: tuple of "halpha", a fits header, and data object for the GONG image at that time
+            header and data will be None if request failed
         """
 
         if self.verbose:
@@ -102,7 +111,12 @@ class Fetcher:
         halpha, source = Quantity(656.28, "nm"), "gong"
         query = client.search(vso.attrs.Time(*time_interval(self.date)),
                              vso.attrs.Source(source),
-                             vso.attrs.Wavelength(halpha))[0]
+                             vso.attrs.Wavelength(halpha))
+
+        if not query: # no images found in query
+            return "halpha", None, None
+        else:
+            query = query[0]
 
         result = client.fetch([query], path="./").wait(progress=False)
 
@@ -124,15 +138,15 @@ class Fetcher:
             data[np.isnan(data)] = 0
             data[data < 0] = 0
 
-        return "halpha",head, data
+        return "halpha", head, data
 
     def fetch_aia(self, product, correct=True):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
-        :param wavelength: wavelength of channel in angstroms
-        :param verbose: print help information as running
+        :param product: aia-[REQUESTED CHANNEL IN ANGSTROMS], e.g. aia-131 gets the 131 angstrom image
         :param correct: remove nans and negatives
-        :return: "halpha" and then a fits header and data object for the GONG image at that time
+        :return: tuple of product name, fits header, and data object
+            the header and data object will be None if the request failed
         """
 
         if self.verbose:
@@ -152,7 +166,11 @@ class Fetcher:
         if self.verbose:
             print("Query length for {} is {}".format(product, len(query)))
 
-        query = query[0]
+        if not query: # failed to get a result
+            return product, None, None
+        else:
+            query = query[0]
+
         result = client.fetch([query], path="./").wait(progress=False)
 
         # open the image and remove the file
@@ -176,12 +194,14 @@ class Fetcher:
 
         return product, head, data
 
-    def fetch_suvi(self, product, correct=True):
+    def fetch_suvi_l1b(self, product, correct=True):
         """
-        Given a product keyword, downloads the image into the current directory.
+        Given a product keyword, downloads the SUVI l1b image into the current directory.
+        NOTE: the suvi_l1b_url must be properly set for the Fetcher object
         :param product: the keyword for the product, e.g. suvi-l1b-fe094
-        :param verbose: print information as running
         :param correct: remove nans and negatives
+        :return: tuple of product name, fits header, and data object
+            the header and data object will be None if the request failed
         """
         if self.date < datetime(2018, 5, 23):
             print("SUVI data is only available after 2018-5-23")
@@ -225,6 +245,37 @@ class Fetcher:
         data, head = self.align_solar_fov(head, data, 2.5, 2.0, rotate=True, scale=False)
 
         return product, head, data
+
+    def fetch_suvi_composite(self, product, correct=True):
+        """
+        Fetches a suvi composite from a local directory
+        NOTE: the suvi_composite_path must be properly set for this methd
+        :param product: the requested product, e.g. suvi-l2-c094
+        :param correct: remove nans and negatives
+        :return: tuple of product name, fits header, and data object
+            the header and data object will be None if the request failed
+        """
+        path = os.path.join(self.suvi_composite_path, product,
+                            "{:4d}/{:02d}/{:02d}/".format(self.date.year, self.date.month, self.date.day))
+
+        if not os.path.isdir(path):
+            return product, None, None
+        else:  # exists!
+            # find the composite with the closest time code
+            candidate_fns = [fn for fn in os.listdir(path) if ".fits" in fn]
+            candidate_fns = sorted([self.parse_filename_meta(fn) for fn in candidate_fns],
+                                   key=lambda entry: self.date - entry[2])
+            candidate_fns = [entry[0] for entry in candidate_fns]
+            with fits.open(os.path.join(path, candidate_fns[0])) as hdus:
+                # if the file has the expected number of headers, use it!
+                if len(hdus) == 2:
+                    head, data = hdus[1].header, hdus[1].data
+                    if correct:
+                        data[np.isnan(data)] = 0
+                        data[data < 0] = 0
+                    return product, head, data
+                else:
+                    return product, None, None
 
     @staticmethod
     def parse_filename_meta(filename):
