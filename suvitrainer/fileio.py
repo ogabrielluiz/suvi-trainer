@@ -18,8 +18,6 @@ from sunpy.net import vso
 from astropy.units import Quantity
 from skimage.transform import AffineTransform, warp
 
-from dateutil import parser as dateparser
-
 
 def convert_time_string(date_str):
     """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
@@ -153,6 +151,7 @@ class Fetcher:
             print("Requesting {}".format(product))
 
         wavelength = product.split("-")[1]
+
         def time_interval(time):
             """ get a window of three minutes around the requested time to ensure an image at GONG cadence"""
             return time - timedelta(minutes=15), time + timedelta(minutes=15)
@@ -482,12 +481,22 @@ class Fetcher:
 
 
 class PNGMaker:
+    """ Creates helpful pngs to view data """
+
     def __init__(self, thematic_map_hdu, config_path):
+        """
+        :param thematic_map_hdu: a list of hdus for a thematic map, 0 is the map data, 1 is the theme labels
+        :param config_path: the path to a configuration object
+        """
         self.config = Config(config_path)
         self.thmap = thematic_map_hdu[0].data
-        self.date = dateparser.parse(thematic_map_hdu[0].header['date-end'])
+        self.date = date_parser.parse(thematic_map_hdu[0].header['date-end'])
 
-    def save_thematic_map(self, outpath=None):
+    def make_thematic_png(self, outpath=None):
+        """
+        Convert a thematic map into png format with a legend
+        :param outpath: if specified, will save the image instead of showing it
+        """
         from matplotlib.patches import Patch
 
         fig, previewax = plt.subplots()
@@ -518,6 +527,12 @@ class PNGMaker:
             plt.show()
 
     def make_three_color(self, upper_percentile=100, lower_percentile=0):
+        """
+        Load the configured input channel images and create a three color image
+        :param upper_percentile: pixels above this percentile are suppressed
+        :param lower_percentile: pixels below this percentile are suppressed
+        :return: a numpy array (m,n,3) representing a three-color image
+        """
         order = {'red': 0, 'green': 1, 'blue': 2}
         shape = self.thmap.shape
         three_color = np.zeros((shape[0], shape[1], 3))
@@ -542,7 +557,12 @@ class PNGMaker:
             three_color[:, :, index] /= np.nanmax(three_color[:, :, index])
         return three_color
 
-    def save_comparison_map(self, outpath=None, include_legend=False):
+    def make_comparison_png(self, outpath=None, include_legend=False):
+        """
+        Creates a thematic map image with a three color beside it
+        :param outpath:  if specified, will save the image instead of showing it
+        :param include_legend: if true will include the thamatic map label legend
+        """
         from matplotlib.patches import Patch
 
         fig, axs = plt.subplots(ncols=2, sharex=True, sharey=True)
