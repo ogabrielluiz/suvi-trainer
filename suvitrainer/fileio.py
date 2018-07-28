@@ -738,12 +738,3 @@ class Outgest:
         # Output thematic map as the primary HDU and the list of map features as an extension BinTable HDU
         hdu = fits.HDUList([pri_hdu, sec_hdu])
         hdu.writeto(self.filename, overwrite=True, checksum=True)
-
-
-if __name__ == "__main__":
-    f = Fetcher(datetime(2018, 6, 30, 5, 13), products=['halpha'])
-    fetched = f.fetch()
-    head, data = fetched['halpha']
-    fig, ax = plt.subplots()
-    ax.imshow(data)
-    plt.show()
