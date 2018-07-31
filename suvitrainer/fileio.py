@@ -18,7 +18,6 @@ from sunpy.net import vso
 from astropy.units import Quantity
 from skimage.transform import AffineTransform, warp
 
-import ipdb
 
 def convert_time_string(date_str):
     """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """

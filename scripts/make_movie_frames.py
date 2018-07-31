@@ -37,7 +37,7 @@ def make_three_color(data, time, step, config, shape=(1280, 1280), lower_val=(0,
 
     for color, channel in channel_colors.items():
         if data[channel][1] is None or \
-                abs((time - date_parser.parse(data[channel][0]['date-end'])).total_seconds()) > step.total_seconds():
+                abs((time - date_parser.parse(data[channel][0]['date-end'])).total_seconds()) > step.total_seconds()/2.0:
             return np.zeros((shape[0], shape[1], 3))
 
         three_color[:, :, order[color]] = data[channel][1]
@@ -118,14 +118,15 @@ def make_plot(time, config, step):
 
     for channel in channel_min:
         fig, ax = plt.subplots()
-        if result[channel][1] is not None \
-                and abs((time - date_parser.parse(result[channel][0]['date-end'])).total_seconds()) < step.total_seconds():
+        if result[channel][1] is not None and \
+                abs((time - date_parser.parse(result[channel][0]['date-end'])).total_seconds()) < step.total_seconds()/2.0:
             dat = np.power(result[channel][1], 0.25)
+            ax.set_title(date_parser.parse(result[channel][0]['date-obs']).strftime("%Y-%m-%d %H:%M:%S"))
             dat[np.isnan(dat)] = 0
         else:
             dat = np.zeros((1280, 1280))
+            ax.set_title(timestr)
         ax.imshow(dat, vmin=channel_min[channel], vmax=channel_max[channel], cmap='gray', origin='lower')
-        ax.set_title(timestr)
         ax.set_axis_off()
         fig.savefig("{}_{}.png".format(channel, fnextend), bbox_inches='tight', dpi=300)
         plt.close(fig)
