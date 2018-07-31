@@ -18,6 +18,7 @@ from sunpy.net import vso
 from astropy.units import Quantity
 from skimage.transform import AffineTransform, warp
 
+import ipdb
 
 def convert_time_string(date_str):
     """ Change a date string from the format 2018-08-15T23:55:17 into a datetime object """
@@ -62,11 +63,10 @@ class Fetcher:
         self.products = products
         self.verbose = verbose
 
-    def fetch(self):
+    def fetch(self, multithread=True):
         """
         For all products in products, will call the correct fetch routine and download an image
         """
-        pool = ThreadPool()
 
         def func_map(product):
             if "halpha" in product:
@@ -81,12 +81,17 @@ class Fetcher:
                 raise ValueError("{} is not a valid product.".format(product))
             return result
 
-        results = pool.map(func_map, self.products)
+        if multithread:
+            pool = ThreadPool()
+            results = pool.map(func_map, self.products)
+        else:
+            results = [func_map(product) for product in self.products]
+
         results = {product: (head, data) for product, head, data in results}
-        for product, (_, data) in results.items():
-            if data is None:
-                sys.exit("The {} channel was empty. Please try again.".format(product) +
-                         "Sometimes a second reload or a different date is needed")
+        # for product, (_, data) in results.items():
+        #     if data is None:
+        #         raise ValueError("The {} channel was empty. Please try again.".format(product) +
+        #                          "Sometimes a second reload or a different date is needed")
         return results
 
     def fetch_halpha(self, correct=True):
@@ -108,8 +113,8 @@ class Fetcher:
         client = vso.VSOClient()
         halpha, source = Quantity(656.28, "nm"), "gong"
         query = client.search(vso.attrs.Time(*time_interval(self.date)),
-                             vso.attrs.Source(source),
-                             vso.attrs.Wavelength(halpha))
+                              vso.attrs.Source(source),
+                              vso.attrs.Wavelength(halpha))
 
         if not query: # no images found in query
             return "halpha", None, None
@@ -261,13 +266,14 @@ class Fetcher:
             return product, None, None
         else:  # exists!
             # find the composite with the closest time code
-            candidate_fns = [fn for fn in os.listdir(path) if ".fits" in fn]
+            candidate_fns = [fn for fn in os.listdir(path) if ".fits" in fn
+                             and os.path.getsize(os.path.join(path, fn)) > 0]
             candidate_fns = sorted([self.parse_filename_meta(fn) for fn in candidate_fns],
-                                   key=lambda entry: self.date - entry[2])
+                                   key=lambda entry: abs((self.date - entry[2]).total_seconds()))
             candidate_fns = [entry[0] for entry in candidate_fns]
             with fits.open(os.path.join(path, candidate_fns[0])) as hdus:
                 # if the file has the expected number of headers, use it!
-                if len(hdus) == 2:
+                if len(hdus) == 2 and 'empty' in hdus[1].header and not hdus[1].header['empty']:
                     head, data = hdus[1].header, hdus[1].data
                     if correct:
                         data[np.isnan(data)] = 0
@@ -544,7 +550,7 @@ class PNGMaker:
 
             # scale the image by the power
             three_color[:, :, order[color]] = np.power(three_color[:, :, order[color]],
-                                                      self.config.default["{}_power".format(color)])
+                                                       self.config.default["{}_power".format(color)])
 
             # adjust the percentile thresholds
             lower = np.nanpercentile(three_color[:, :, order[color]], lower_percentile)
