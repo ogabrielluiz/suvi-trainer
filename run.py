@@ -71,12 +71,15 @@ if __name__ == "__main__":
     data, headers = dict(), dict()
     for product in results:
         head, d = results[product]
+        if d is None:
+            raise ValueError("{} is an empty image.".format(product))
         data[config.products_map[product]] = d
         headers[config.products_map[product]] = head
 
     # the output filenames are structured as the "thmap_[date of observation]_[date of labeling].fits"
     out_file_name = "thmap_{}_{}.fits".format(date.strftime("%Y%m%d%H%M%S"),
                                               datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+
     App(data, out_file_name, headers, args.config).mainloop()
 
     if args.verbose:
