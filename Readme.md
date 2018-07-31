@@ -26,11 +26,11 @@ You will need to edit the [configuration file](config_example.json) to include y
 [contact me](mailto:hughes.jmb@gmail.com) for the password and further information. 
 
 *Please note that the [extra scripts](scripts/) may require packages that are not automatically installed. They are auxiliary
-and not fundamental for the annotation tool to run. Everything needed for [run.py](run.py) and the main annotation tool should be automatically
+and not fundamental for the annotation tool to run. Everything needed for [run.py](run_suvitrainer.py) and the main annotation tool should be automatically
 installed.*
 
 ### Running
-The [run.py](run.py) script should provide all needed functionality for the average user. 
+The [run_suvitrainer.py](run_suvitrainer.py) script should provide all needed functionality for the average user. 
 It takes a couple optional arguments: verbosity and dates.
 The verbosity, `-v` or `--verbose` argument will print helpful status information while running. 
 The `date` option allows three methods of specifying which date to run on: 

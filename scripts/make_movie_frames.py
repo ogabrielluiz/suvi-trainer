@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from suvitrainer.fileio import Fetcher
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
