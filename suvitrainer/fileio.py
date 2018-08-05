@@ -1,5 +1,4 @@
 import os
-import sys
 import ftplib
 import re
 import urllib.request
@@ -17,6 +16,8 @@ from skimage.transform import resize
 from sunpy.net import vso
 from astropy.units import Quantity
 from skimage.transform import AffineTransform, warp
+
+from scipy.signal import medfilt
 
 
 def convert_time_string(date_str):
@@ -62,20 +63,20 @@ class Fetcher:
         self.products = products
         self.verbose = verbose
 
-    def fetch(self, multithread=True):
+    def fetch(self, multithread=True, median_kernel=5):
         """
         For all products in products, will call the correct fetch routine and download an image
         """
 
         def func_map(product):
             if "halpha" in product:
-                result = self.fetch_halpha()
+                result = self.fetch_halpha(median_kernel=median_kernel)
             elif "aia" in product:
-                result = self.fetch_aia(product)
+                result = self.fetch_aia(product, median_kernel=median_kernel)
             elif "l1b" in product:
-                result = self.fetch_suvi_l1b(product)
+                result = self.fetch_suvi_l1b(product, median_kernel=median_kernel)
             elif "l2-ci" in product:
-                result = self.fetch_suvi_composite(product)
+                result = self.fetch_suvi_composite(product, median_kernel=median_kernel)
             else:
                 raise ValueError("{} is not a valid product.".format(product))
             return result
@@ -93,7 +94,7 @@ class Fetcher:
         #                          "Sometimes a second reload or a different date is needed")
         return results
 
-    def fetch_halpha(self, correct=True):
+    def fetch_halpha(self, correct=True, median_kernel=5):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
         :param correct: remove nans and negatives
@@ -140,9 +141,12 @@ class Fetcher:
             data[np.isnan(data)] = 0
             data[data < 0] = 0
 
+        if median_kernel:
+            data = medfilt(data, median_kernel)
+
         return "halpha", head, data
 
-    def fetch_aia(self, product, correct=True):
+    def fetch_aia(self, product, correct=True, median_kernel=5):
         """
         pull halpha from that time from Virtual Solar Observatory GONG archive
         :param product: aia-[REQUESTED CHANNEL IN ANGSTROMS], e.g. aia-131 gets the 131 angstrom image
@@ -191,13 +195,17 @@ class Fetcher:
         head['CRPIX2'] = 640
         head['CDELT1'] = 2.5
         head['CDELT2'] = 2.5
+
         if correct:
             data[np.isnan(data)] = 0
             data[data < 0] = 0
 
+        if median_kernel:
+            data = medfilt(data, median_kernel)
+
         return product, head, data
 
-    def fetch_suvi_l1b(self, product, correct=True):
+    def fetch_suvi_l1b(self, product, correct=True, median_kernel=5):
         """
         Given a product keyword, downloads the SUVI l1b image into the current directory.
         NOTE: the suvi_l1b_url must be properly set for the Fetcher object
@@ -245,11 +253,14 @@ class Fetcher:
             data[np.isnan(data)] = 0
             data[data < 0] = 0
 
+        if median_kernel:
+            data = medfilt(data, median_kernel)
+
         data, head = self.align_solar_fov(head, data, 2.5, 2.0, rotate=True, scale=False)
 
         return product, head, data
 
-    def fetch_suvi_composite(self, product, correct=True):
+    def fetch_suvi_composite(self, product, correct=True, median_kernel=5):
         """
         Fetches a suvi composite from a local directory
         NOTE: the suvi_composite_path must be properly set for this methd
@@ -277,6 +288,9 @@ class Fetcher:
                     if correct:
                         data[np.isnan(data)] = 0
                         data[data < 0] = 0
+
+                    if median_kernel:
+                        data = medfilt(data, median_kernel)
                     return product, head, data
                 else:
                     return product, None, None
