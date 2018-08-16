@@ -325,9 +325,8 @@ class App(tk.Tk):
         else:
             self.draw_default()
         self.history.append(self.selection_array)
-        colortable = [self.config.solar_colors[self.config.solar_class_name[i]]
-                      for i in range(len(self.config.solar_classes))]
-        cmap = matplotlib.colors.ListedColormap(colortable)
+        colortable = self.config.solar_colors
+        cmap = self.config.solar_cmap
         self.mask = self.previewax.imshow(self.selection_array,
                                           origin='lower',
                                           interpolation='nearest',
@@ -735,7 +734,12 @@ class App(tk.Tk):
         :return: updates the self.selection_array
         """
         # fill everything with empty outer space
-        self.selection_array[:, :] = self.config.solar_class_index['empty_outer_space']
+        if 'outer_space' in self.config.solar_class_index:
+            self.selection_array[:, :] = self.config.solar_class_index['outer_space']
+        elif 'empty_outer_space' in self.config.solar_class_index:
+            self.selection_array[:, :] = self.config.solar_class_index['empty_outer_space']
+        else:
+            raise ValueError("outer_space or empty_outer_space must be classes with colors.")
 
         # draw the limb label in its location
         self.draw_annulus((self.cx, self.cy),
