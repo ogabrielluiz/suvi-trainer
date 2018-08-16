@@ -21,6 +21,10 @@
     "flare":9
   },
 
+  "data": {
+    "median_kernel":0
+  },
+
   "display":{
     "colors":{
       "unlabeled":"white",

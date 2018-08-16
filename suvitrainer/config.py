@@ -55,3 +55,10 @@ class Config:
             self.ranges[k] = v
 
         self.boldfont = config['display']['font']['bold']
+
+        if 'data' in config and 'median_kernel' in config['data']:
+            self.median_kernel = config['data']['median_kernel']
+            if self.median_kernel == 0:
+                self.median_kernel = None
+        else:
+            self.median_kernel = None

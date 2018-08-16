@@ -214,7 +214,8 @@ class Fetcher:
         :return: tuple of product name, fits header, and data object
             the header and data object will be None if the request failed
         """
-        if self.date < datetime(2018, 5, 23):
+        if self.date < datetime(2018, 5, 23) and not (self.date >= datetime(2017, 9, 6) \
+                and self.date <= datetime(2017, 9, 10, 23, 59)):
             print("SUVI data is only available after 2018-5-23")
             return product, None, None
 
@@ -229,9 +230,9 @@ class Fetcher:
         soup = BeautifulSoup(page, 'html.parser')
         links = [link['href'] for link in soup.find_all('a', href=True)]
         links = [link for link in links if "SUVI" in link]
-        meta = [self.parse_filename_meta(fn) for fn in links]
+        meta = [self.parse_filename_meta(fn) for fn in links if ".fits" in fn]
         links = sorted(meta, key=lambda m: np.abs((m[2] - self.date).total_seconds()))[:10]
-        links = [fn for fn, _, _, _, _ in meta]
+        links = [fn for fn, _, _, _, _ in links]
 
         i = 0
 
@@ -257,7 +258,8 @@ class Fetcher:
             data = medfilt(data, median_kernel)
 
         data, head = self.align_solar_fov(head, data, 2.5, 2.0, rotate=True, scale=False)
-
+        if self.verbose:
+            print(product, " is using ", head['date-obs'])
         return product, head, data
 
     def fetch_suvi_composite(self, product, correct=True, median_kernel=5):
@@ -345,9 +347,18 @@ class Fetcher:
                 break
 
         if match is None:
-            # we didn't find any matching patterns...
-            raise ValueError("Timestamps not detected in filename: %s" % filename)
-        return filename, dt_start, dt_end, match.group("platform"), match.group("product")
+            if "NCEI" in filename and ".fits" in filename:
+                dt_start = datetime.strptime("T".join(filename.split("_")[4:6]), "%Y%m%dT%H%M%S")
+                dt_end = dt_start
+                angstroms = int(filename.split("_")[2])
+                atom = "Fe" if angstroms != 304 else "He"
+                product = "SUVI-L1b-{}{}".format(atom, angstroms)
+                return filename, dt_start, dt_end, "g16", product
+            else:
+                # we didn't find any matching patterns...
+                raise ValueError("Timestamps not detected in filename: %s" % filename)
+        else:
+            return filename, dt_start, dt_end, match.group("platform"), match.group("product")
 
     @staticmethod
     def align_solar_fov(header, data, cdelt_min, naxis_min,

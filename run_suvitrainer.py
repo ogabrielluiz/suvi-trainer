@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 suvi_base_url=config.suvi_base_url,
                 suvi_composite_path=config.suvi_composite_path,
                 verbose=args.verbose)
-    results = f.fetch()
+    results = f.fetch(median_kernel=config.median_kernel)
 
     data, headers = dict(), dict()
     for product in results:
