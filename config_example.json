@@ -10,8 +10,7 @@
 
 "classes":{
     "unlabeled":0,
-    "empty_outer_space":1,
-    "structured_outer_space":2,
+    "outer_space":1,
     "bright_region":3,
     "filament":4,
     "prominence":5,
@@ -28,8 +27,7 @@
   "display":{
     "colors":{
       "unlabeled":"white",
-      "empty_outer_space": "#191970",
-      "structured_outer_space": "#8b7b8b",
+      "outer_space": "#191970",
       "bright_region": "yellow",
       "filament": "#FF3E96",
       "prominence": "#FF69B4",
