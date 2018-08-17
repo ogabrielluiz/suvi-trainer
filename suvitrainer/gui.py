@@ -331,7 +331,7 @@ class App(tk.Tk):
                                           origin='lower',
                                           interpolation='nearest',
                                           cmap=cmap,
-                                          vmin=-1, vmax=len(colortable))
+                                          vmin=-1, vmax=max([num for _, num in self.config.solar_classes])+1)
         self.previewax.set_xlim([0, self.shape[0]])
         self.previewax.set_ylim([0, self.shape[0]])
         self.previewax.set_aspect("equal")
