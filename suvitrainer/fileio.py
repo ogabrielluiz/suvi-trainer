@@ -225,7 +225,10 @@ class Fetcher:
 
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as response:
-            page = response.read()
+            try:
+                page = response.read()
+            except ConnectionError:
+                print("Unable to access website. Wait a few moments and try again.")
 
         soup = BeautifulSoup(page, 'html.parser')
         links = [link['href'] for link in soup.find_all('a', href=True)]
