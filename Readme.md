@@ -45,6 +45,10 @@ The list of options for input images:
 - any of the SUVI EUV L1B channels listed as products, e.g. `suvi-l1b-fe131` 
 (see the [FTP site](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/) for a list)
 - any locally saved SUVI l2 composite images (only available internally to NOAA employees at this time), e.g. `suvi-l2-ci094`
+
+
+**For more detailed usage, see the [user guide](user-guide.pdf).**
+
 ## Data
 The output of training is saved as a FITS file which is later converted into a labeled png. 
 I will share the results of labeling with this tool using 
